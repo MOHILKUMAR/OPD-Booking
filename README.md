@@ -9,9 +9,11 @@ schedules, holidays, announcements, staff and refunds, and a waiting-room TV sho
 TanStack Query · React Hook Form + Zod · Supabase (Postgres + RLS, Auth, Realtime, Edge Functions) ·
 Razorpay (test mode, off by default) · Cloudflare Pages.
 
-> **Status:** feature-complete MVP with automated tests and measured load results. It has **not yet
-> been deployed** to a hosted Supabase project, and the free tier is suitable for a demo or pilot
-> with simulated patients only. See [docs/operations.md](docs/operations.md#production-readiness-checklist).
+> **Status:** feature-complete MVP, deployed as a **demo** at **https://mediqueue-5b5.pages.dev**
+> (Cloudflare Pages + Supabase Free, Singapore region, fictional demo hospital, payments off). The
+> free tier is suitable for a demo or pilot with simulated patients only. See
+> [docs/deployment.md](docs/deployment.md#current-demo-deployment) and
+> [docs/operations.md](docs/operations.md#production-readiness-checklist).
 
 ## Why it is safe under load
 

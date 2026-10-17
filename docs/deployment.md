@@ -8,6 +8,36 @@ Realtime, Edge Functions) + **Razorpay test mode** (off by default).
 > production-ready for a live hospital: it has no backups, pauses after 7 idle days, has no uptime
 > SLA, and DPDP obligations have not been reviewed. See [operations.md](operations.md).
 
+## Current demo deployment
+
+Deployed 2026-10-18 and checked end to end against the live backend: anonymous booking, duplicate
+refusal, tracking with and without the key, masked identity, PII-free TV board, cancellation, and
+the Realtime websocket.
+
+| Piece            | Value                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------- |
+| Site             | https://mediqueue-5b5.pages.dev (Cloudflare Pages project `mediqueue`, direct upload from `dist/`)       |
+| Supabase project | `mediqueue_OPD`, ref `aoeejxunlbidgmyihmha`, region **ap-southeast-1 (Singapore)**                       |
+| Data             | `supabase/seed.sql` demo hospital (`demo-hospital`) and fictional doctors                                |
+| Auth             | anonymous sign-ins on, email confirmation off (no SMTP), site URL = the Pages URL                        |
+| Edge Functions   | `admin-create-staff`, `payments-*` (payments off: `PAYMENTS_ENABLED=false`); `housekeeping` not deployed |
+| Scheduled jobs   | pg_cron `mediqueue-housekeeping` every 10 minutes                                                        |
+| Frontend env     | `VITE_APP_ENV=staging` (demo banner on), `VITE_PAYMENTS_ENABLED=false`, no Turnstile key                 |
+
+To redeploy the frontend after a change, build with the same `VITE_*` values and run
+`npx wrangler pages deploy dist --project-name mediqueue --branch main`.
+
+Notes from this deployment:
+
+- On Windows, Supabase CLI 2.121 printed "You are now logged in" for `login --token` without
+  saving the token at first. Check with `npx supabase@latest projects list`. The login is stored in
+  Windows Credential Manager as `Supabase CLI:supabase`. The token must have full account access;
+  a restricted token can list projects but cannot create them.
+- Recent Wrangler versions route `pages project create` to Workers. The classic Pages project was
+  created once with `--force`; later `pages deploy` commands need no flag.
+- To move to Mumbai later: create a project in ap-south-1 with a full-access token, `supabase link`
+  to it, then repeat steps 2–5. Then rebuild with the new `VITE_SUPABASE_URL` and key.
+
 ## 0. Prerequisites
 
 - Node 22+, Git, a GitHub repository for this code.
@@ -125,6 +155,8 @@ turn on two-factor authentication (**2FA** button), then create other staff from
 
 1. Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git**. Pick the repository.
 2. Build settings: framework **Vite**, build command `npm run build`, output directory `dist`.
+   (Or skip Git and upload a local build: `npx wrangler pages project create mediqueue --production-branch main --force`
+   once, then `npx wrangler pages deploy dist --project-name mediqueue --branch main`.)
 3. Environment variables (Production and Preview):
    `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_HOSPITAL_SLUG`,
    `VITE_PAYMENTS_ENABLED=false`, `VITE_APP_ENV=staging` (use `production` only for the real

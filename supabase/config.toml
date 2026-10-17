@@ -26,8 +26,8 @@ port = 54323
 
 [auth]
 enabled = true
-site_url = "http://localhost:5173"
-additional_redirect_urls = ["http://localhost:5173"]
+site_url = "https://mediqueue-5b5.pages.dev"
+additional_redirect_urls = ["https://mediqueue-5b5.pages.dev", "http://localhost:5173"]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 enable_signup = true

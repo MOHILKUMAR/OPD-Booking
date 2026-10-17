@@ -45,7 +45,7 @@ Notes:
 | Anonymous sign-ins                | supported, 30/hour per IP (configurable); CAPTCHA/Turnstile strongly recommended | supabase.com/docs/guides/auth/auth-anonymous |
 | MFA with authenticator app (TOTP) | free, enabled by default on every project (phone MFA is a paid add-on)           | supabase.com/docs/guides/auth/auth-mfa       |
 | Sign-up / sign-in rate            | 30 per 5 min per IP                                                              | supabase.com/docs/guides/auth/rate-limits    |
-| pg_cron on Free                   | _unverified_                                                                     | —                                            |
+| pg_cron on Free                   | available (enabled and scheduled on the demo project, 2026-10-18)                | `pg_available_extensions` on the project     |
 | Do anonymous users count as MAU   | _unverified_                                                                     | —                                            |
 
 API keys: new projects use `sb_publishable_…` (browser, RLS applies) and `sb_secret_…`
