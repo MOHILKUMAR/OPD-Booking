@@ -11,6 +11,9 @@ Migrations live in [`supabase/migrations`](../supabase/migrations) and are appli
 | `…000500_function_grants_realtime.sql` | per-function EXECUTE grants, Realtime publication                                              |
 | `…000600_staff_provisioning.sql`       | server-only helpers used by the `admin-create-staff` Edge Function                             |
 | `…000700_staff_mfa_enforcement.sql`    | role helpers also require an `aal2` token from staff with a verified MFA factor                |
+| `20261018000100_patient_alerts.sql`    | alert settings, notification `data`, "turn near" / delay trigger, visit reminders, SMS queue   |
+| `20261018000200_auto_refunds.sql`      | automatic refund setting and limit, claim function, pg_net wake-up (`app.kick_automation`)     |
+| `20261018000300_report_exports.sql`    | `admin_export` for the Reports page (CSV), audited                                             |
 
 The role helpers (`app.has_role` / `app.is_admin`, `app.is_staff`, `app.can_access_doctor`,
 `app.require_doctor_permission`) are what every RLS policy and staff function calls; see
@@ -187,15 +190,39 @@ Additional guards:
 - **Cancel** (admin only, reason required) cancels every active token and notifies patients.
 - Only an admin can reopen a closed session.
 
+## Alerts, automatic refunds and exports
+
+- `hospitals` gained `turn_alert_ahead` (default 3; 0 = off), `visit_reminder_minutes` (default
+  120; 0 = off), `sms_alerts_enabled` (default off), `auto_refund_enabled` (default off) and
+  `auto_refund_max_paise` (null = no limit). Admins change them in Settings; the existing audit
+  trigger records every change.
+- `notifications` gained `data` (template values for translated display), and `claimed_at`,
+  `sent_at`, `error` for the SMS queue. A partial unique index allows one `TURN_NEAR` and one
+  `VISIT_REMINDER` per booking and channel.
+- Trigger `queue_states_alerts` (after update): every queue change updates `queue_states`, so it
+  is the one place that sends "turn near" alerts (open session, patients ahead ≤ the setting,
+  same counting rule as the tracking page) and delay notices (each 15-minute step).
+- `app.queue_visit_reminders()` runs every minute from pg_cron for today's and tomorrow's
+  sessions; bookings made inside the reminder window get no reminder.
+- `refunds.initiated_via` (`ADMIN` / `AUTO`). `svc_claim_auto_refunds(mode, limit)` moves eligible
+  `REQUESTED` refunds (setting on, under the limit, captured payment in the same gateway mode,
+  requested within a day) to `PROCESSING` with `FOR UPDATE SKIP LOCKED`, so concurrent runs and
+  an administrator's manual refund can never both start one. `app.kick_automation()` calls the
+  `automation` Edge Function through pg_net only when such work (or a queued SMS) exists.
+- `admin_export(...)` returns report rows page by page in a stable order and writes one
+  `report.exported` audit entry per export.
+
 ## Indexes (hot paths)
 
-| Query                   | Index                                                                            |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| allocation / queue list | `appointments(queue_state_id, status, token_no)`                                 |
-| duplicate check         | partial unique `appointments(queue_state_id, booking_identity_key)`              |
-| my appointments         | `appointments(patient_user_id, session_date desc)`                               |
-| staff phone search      | `appointments(patient_phone, session_date)`                                      |
-| dashboard               | `appointments(hospital_id, session_date)`, `(hospital_id, created_at)`           |
-| session lookup          | unique `queue_states(shift_id, session_date)`, `(hospital_id, session_date)`     |
-| directory               | `doctors(hospital_id, is_active, sort_order)`, `(hospital_id, lower(specialty))` |
-| expiring holds          | partial `appointments(hold_expires_at) where status = 'PAYMENT_PENDING'`         |
+| Query                   | Index                                                                                           |
+| ----------------------- | ----------------------------------------------------------------------------------------------- |
+| allocation / queue list | `appointments(queue_state_id, status, token_no)`                                                |
+| duplicate check         | partial unique `appointments(queue_state_id, booking_identity_key)`                             |
+| my appointments         | `appointments(patient_user_id, session_date desc)`                                              |
+| staff phone search      | `appointments(patient_phone, session_date)`                                                     |
+| dashboard               | `appointments(hospital_id, session_date)`, `(hospital_id, created_at)`                          |
+| session lookup          | unique `queue_states(shift_id, session_date)`, `(hospital_id, session_date)`                    |
+| directory               | `doctors(hospital_id, is_active, sort_order)`, `(hospital_id, lower(specialty))`                |
+| expiring holds          | partial `appointments(hold_expires_at) where status = 'PAYMENT_PENDING'`                        |
+| automatic refunds       | partial `refunds(requested_at) where status = 'REQUESTED'`                                      |
+| alert once per booking  | partial unique `notifications(appointment_id, kind, channel)` for `TURN_NEAR`, `VISIT_REMINDER` |

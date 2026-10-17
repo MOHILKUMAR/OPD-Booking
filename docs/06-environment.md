@@ -30,27 +30,44 @@ keys (site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000
 
 ## Edge Functions (`supabase secrets set …`, local: `supabase/functions/.env`)
 
-| Variable                                            |   Required    | Notes                                                                                              |
-| --------------------------------------------------- | :-----------: | -------------------------------------------------------------------------------------------------- |
-| `SUPABASE_URL`                                      |     auto      | Injected by Supabase                                                                               |
-| `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_SECRET_KEY` |  auto / yes   | Secret key, server only; also used to verify callers' JWTs. The functions accept either name.      |
-| `ALLOWED_ORIGINS`                                   |      yes      | Comma-separated, e.g. `https://mediqueue.pages.dev,http://localhost:5173`                          |
-| `PAYMENTS_ENABLED`                                  |      yes      | `false` until merchant approval. Every payment function returns `503 PAYMENTS_DISABLED` otherwise. |
-| `RAZORPAY_MODE`                                     | with payments | `test` or `live`. Recorded on every payment row.                                                   |
-| `RAZORPAY_KEY_ID`                                   | with payments | `rzp_test_…` in test mode. Returned to the browser for Checkout (public by design).                |
-| `RAZORPAY_KEY_SECRET`                               | with payments | **Secret.** Signs/verifies payments.                                                               |
-| `RAZORPAY_WEBHOOK_SECRET`                           | with payments | **Secret.** Set when creating the webhook in the Razorpay dashboard.                               |
-| `HOUSEKEEPING_TOKEN`                                |   optional    | Shared secret for the `housekeeping` function when pg_cron is unavailable                          |
+| Variable                                            |          Required           | Notes                                                                                                                                                                                                              |
+| --------------------------------------------------- | :-------------------------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `SUPABASE_URL`                                      |            auto             | Injected by Supabase                                                                                                                                                                                               |
+| `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_SECRET_KEY` |         auto / yes          | Secret key, server only; also used to verify callers' JWTs. The functions accept either name.                                                                                                                      |
+| `ALLOWED_ORIGINS`                                   |             yes             | Comma-separated, e.g. `https://mediqueue.pages.dev,http://localhost:5173`                                                                                                                                          |
+| `PAYMENTS_ENABLED`                                  |             yes             | `false` until merchant approval. Every payment function returns `503 PAYMENTS_DISABLED` otherwise.                                                                                                                 |
+| `RAZORPAY_MODE`                                     |        with payments        | `test` or `live`. Recorded on every payment row.                                                                                                                                                                   |
+| `RAZORPAY_KEY_ID`                                   |        with payments        | `rzp_test_…` in test mode. Returned to the browser for Checkout (public by design).                                                                                                                                |
+| `RAZORPAY_KEY_SECRET`                               |        with payments        | **Secret.** Signs/verifies payments.                                                                                                                                                                               |
+| `RAZORPAY_WEBHOOK_SECRET`                           |        with payments        | **Secret.** Set when creating the webhook in the Razorpay dashboard.                                                                                                                                               |
+| `HOUSEKEEPING_TOKEN`                                |          optional           | Shared secret for the `housekeeping` function when pg_cron is unavailable                                                                                                                                          |
+| `AUTOMATION_TOKEN`                                  | for automatic refunds / SMS | **Secret.** Shared secret pg_net sends to the `automation` function (24+ characters). The same value is stored in Supabase Vault. `node scripts/setup-automation.mjs` generates and sets both without printing it. |
+| `MESSAGE_PROVIDER`                                  |          optional           | SMS/WhatsApp sender for queued alert copies. Empty or `none` (default): nothing is sent and queued copies are marked FAILED. No paid provider is built in yet (see 07-implementation-plan.md).                     |
 
 Payments also require `hospitals.online_payments_enabled = true`, set by an admin in Settings.
 That gives three independent switches. Test and live keys must never be mixed: use a separate
 Supabase project (or at least separate secrets) for production.
 
+## Supabase Vault (database secrets)
+
+| Name                         | Notes                                                       |
+| ---------------------------- | ----------------------------------------------------------- |
+| `mediqueue_automation_url`   | `https://<project-ref>.supabase.co/functions/v1/automation` |
+| `mediqueue_automation_token` | same value as the `AUTOMATION_TOKEN` function secret        |
+
+Read only by `app.kick_automation()` (pg_cron, every minute). Without them it returns
+`NOT_CONFIGURED` and refund requests wait for an administrator as before.
+
+The interface language needs no configuration: the switch in the header remembers each
+visitor's choice, and `?lang=hi` (or `?lang=en`) in a link opens a page in that language, e.g.
+`/display?lang=hi` for a Hindi waiting-room TV.
+
 ## Scripts (local shell only)
 
-| Variable                              | Used by                         | Notes                                             |
-| ------------------------------------- | ------------------------------- | ------------------------------------------------- |
-| `SUPABASE_URL`, `SUPABASE_SECRET_KEY` | `scripts/create-staff-user.mjs` | Bootstrap the first admin. Never put in `VITE_*`. |
+| Variable                              | Used by                                                                                           | Notes                                                                         |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `SUPABASE_URL`, `SUPABASE_SECRET_KEY` | `scripts/create-staff-user.mjs`                                                                   | Bootstrap the first admin. Never put in `VITE_*`.                             |
+| (Supabase CLI login)                  | `scripts/bootstrap-admin.mjs`, `scripts/set-razorpay-secrets.mjs`, `scripts/setup-automation.mjs` | Use the linked project; secrets are typed hidden or generated, never printed. |
 
 The automated tests need no environment variables: `test:db` starts its own PostgreSQL and
 `test:e2e` builds against a mocked API.

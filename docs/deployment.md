@@ -126,9 +126,20 @@ npm run load:day                # 500-visitor day simulation
      qualifications; enter only what the hospital provides.
 6. Realtime: the migration adds `queue_states` and `hospital_announcements` to the
    `supabase_realtime` publication. Check under **Database → Publications**.
-7. Scheduled jobs: enable **pg_cron** and run [`supabase/sql/scheduled-jobs.sql`](../supabase/sql/scheduled-jobs.sql).
-   If pg_cron is not available on your plan, deploy the `housekeeping` function (step 3) and call
-   it every 10 minutes from any scheduler.
+7. Scheduled jobs: enable **pg_cron** (Database → Extensions), deploy the Edge Functions (step 3,
+   including `automation`), then run
+
+   ```bash
+   node scripts/setup-automation.mjs
+   ```
+
+   It generates the automation token, saves it as the `AUTOMATION_TOKEN` function secret and in
+   Supabase Vault (with the function URL), enables **pg_net**, and schedules the jobs in
+   [`supabase/sql/scheduled-jobs.sql`](../supabase/sql/scheduled-jobs.sql): housekeeping every 10
+   minutes, visit reminders and the automation wake-up every minute. Nothing secret is printed.
+   Re-running it rotates the token. If pg_cron is not available on your plan, deploy the
+   `housekeeping` function and call it every 10 minutes from any scheduler (automatic refunds
+   then stay manual).
 
 ## 3. Edge Functions
 
@@ -140,6 +151,7 @@ npx supabase@latest functions deploy payments-create-order
 npx supabase@latest functions deploy payments-verify
 npx supabase@latest functions deploy payments-refund
 npx supabase@latest functions deploy payments-webhook --no-verify-jwt
+npx supabase@latest functions deploy automation --no-verify-jwt     # automatic refunds, SMS queue
 npx supabase@latest functions deploy housekeeping --no-verify-jwt   # only if no pg_cron
 ```
 

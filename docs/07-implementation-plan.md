@@ -63,22 +63,40 @@ Legend: ✅ done and tested · 🟡 done, needs a hosted project to verify · �
   code step after the password, staff routes require `aal2` once a user has enrolled
 - 🟡 Turnstile and TOTP against a hosted project (needs a Cloudflare widget and Supabase settings;
   see [deployment.md](deployment.md) §2)
-- ⬜ Notification providers (SMS/WhatsApp/email). The `notifications.channel` column and the
-  provider interface are ready; no paid provider is wired
-- ⬜ Hindi/regional-language UI
+- ✅ Hindi interface: every patient, staff, admin and TV screen; language switch in the header,
+  `?lang=hi` links (e.g. the TV display); database errors, session reasons and notifications are
+  translated by code; hospital-entered data (doctor names, notes, announcements) is shown as typed
+- ✅ Report exports: Admin → Reports & exports, CSV for appointments (patient details only on
+  explicit opt-in), daily OPD summary, payments, refunds and the audit log; every export audited
+- ✅ Automatic refunds: hospital setting with an optional amount limit; pg_cron wakes the
+  `automation` Edge Function through pg_net only when there is work; failures stay for an admin
+- ✅ Patient alerts: "your turn is near", delay notices and visit reminders as free in-app
+  notifications, shown as browser notifications while the tracking page is open
+- 🟡 SMS/WhatsApp copies of alerts: queue, dispatcher and `MessageSender` adapter built; off by
+  default (`hospitals.sms_alerts_enabled`, `MESSAGE_PROVIDER`); no paid provider wired
+- ⬜ Alerts while the browser is closed (Web Push, free) — not built
 
-## Notification provider interface (future)
+## SMS/WhatsApp provider interface
 
 In-app notifications are written by the database in the same transaction as the event that
-caused them. A future dispatcher (Edge Function on a schedule) would read
-`notifications where channel <> 'IN_APP' and status = 'PENDING'` and call a provider implementing:
+caused them. When a hospital turns on `sms_alerts_enabled`, `TURN_NEAR` and `VISIT_REMINDER`
+alerts also queue an `SMS` copy (`status = 'PENDING'`). The `automation` Edge Function claims
+queued copies and sends each through the sender named by `MESSAGE_PROVIDER`
+(`supabase/functions/_shared/messaging.ts`):
 
 ```ts
-interface NotificationProvider {
-  channel: 'SMS' | 'WHATSAPP' | 'EMAIL'
-  send(to: string, message: { title: string; body: string }): Promise<{ providerId: string }>
+interface MessageSender {
+  readonly name: string
+  send(message: {
+    channel: 'SMS' | 'WHATSAPP'
+    phone: string // 10-digit Indian mobile
+    kind: string // TURN_NEAR, VISIT_REMINDER (maps to a DLT template)
+    text: string
+    data: Record<string, unknown>
+  }): Promise<{ ok: true } | { ok: false; error: string }>
 }
 ```
 
-No provider ships with the MVP. Each one costs money per message, so enable one only after
-approving its cost and template (DLT registration for SMS in India).
+No provider ships. Each costs money per message (about ₹0.15–0.30 per SMS) and needs DLT
+registration and approved templates in India, so add one only after the provider and its cost
+are approved; until then queued copies are marked FAILED and nothing is sent.

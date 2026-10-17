@@ -36,35 +36,38 @@ with your authenticator code." The patient payment functions do not ask for a co
 
 ✅ allowed · ◑ only for their assigned doctor(s) · ❌ refused by the database
 
-| Capability                                              |      Visitor       |     Patient      | Receptionist |             Doctor             |           Admin           |
-| ------------------------------------------------------- | :----------------: | :--------------: | :----------: | :----------------------------: | :-----------------------: |
-| Hospital info, doctors, schedules, announcements        |         ✅         |        ✅        |      ✅      |               ✅               |            ✅             |
-| Live queue numbers, TV display                          |         ✅         |        ✅        |      ✅      |               ✅               |            ✅             |
-| Book a token online                                     | ❌ (needs session) |        ✅        |      ✅      |               ✅               |            ✅             |
-| Read a booking                                          |     key holder     | own + key holder |      ◑       |          ◑ own doctor          |        ✅ hospital        |
-| Cancel a booking online (policy cutoff)                 |     key holder     | own + key holder |      —       |               —                |             —             |
-| My appointment history                                  |         ❌         |   ✅ own only    |      —       |               —                |             —             |
-| Create walk-in token                                    |         ❌         |        ❌        |      ◑       |               ❌               |            ✅             |
-| Mark ARRIVED                                            |         ❌         |        ❌        |      ◑       |               ❌               |            ✅             |
-| Call next / call specific                               |         ❌         |        ❌        |      ◑       |               ◑                |            ✅             |
-| Start consultation / complete                           |         ❌         |        ❌        |      ❌      |               ◑                |            ✅             |
-| Skip / recall                                           |         ❌         |        ❌        |      ◑       |               ◑                |            ✅             |
-| Mark NO_SHOW                                            |         ❌         |        ❌        |      ◑       |               ❌               |            ✅             |
-| Cancel token (reason required)                          |         ❌         |        ❌        |      ◑       |               ❌               |            ✅             |
-| Open / pause / resume / close OPD session               |         ❌         |        ❌        |      ❌      | ◑ if `can_self_manage_session` |            ✅             |
-| Set delay + public note                                 |         ❌         |        ❌        |      ◑       | ◑ if `can_self_manage_session` |            ✅             |
-| Cancel a whole session, open/close online booking       |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
-| Reopen a closed session                                 |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
-| Session statistics (`queue_stats`)                      |         ❌         |        ❌        |      ◑       |               ◑                |            ✅             |
-| Hospital settings, fees, payment toggle                 |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
-| Doctors, departments, shifts, schedules, exceptions     |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
-| Announcements (create/publish)                          |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
-| Dashboard statistics                                    |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
-| Payments, refunds (view / request / reject / execute)   |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
-| Audit logs                                              |         ❌         |        ❌        |      ❌      |               ❌               |      ✅ (read-only)       |
-| Staff accounts and roles                                |         ❌         |        ❌        |      ❌      |               ❌               | ✅ (last admin protected) |
-| Direct writes to appointments / queue_states / payments |         ❌         |        ❌        |      ❌      |               ❌               |    ❌ (functions only)    |
-| `svc_*` payment functions                               |         ❌         |        ❌        |      ❌      |               ❌               |  ❌ (service role only)   |
+| Capability                                                 |      Visitor       |     Patient      | Receptionist |             Doctor             |           Admin           |
+| ---------------------------------------------------------- | :----------------: | :--------------: | :----------: | :----------------------------: | :-----------------------: |
+| Hospital info, doctors, schedules, announcements           |         ✅         |        ✅        |      ✅      |               ✅               |            ✅             |
+| Live queue numbers, TV display                             |         ✅         |        ✅        |      ✅      |               ✅               |            ✅             |
+| Book a token online                                        | ❌ (needs session) |        ✅        |      ✅      |               ✅               |            ✅             |
+| Read a booking                                             |     key holder     | own + key holder |      ◑       |          ◑ own doctor          |        ✅ hospital        |
+| Cancel a booking online (policy cutoff)                    |     key holder     | own + key holder |      —       |               —                |             —             |
+| My appointment history                                     |         ❌         |   ✅ own only    |      —       |               —                |             —             |
+| Create walk-in token                                       |         ❌         |        ❌        |      ◑       |               ❌               |            ✅             |
+| Mark ARRIVED                                               |         ❌         |        ❌        |      ◑       |               ❌               |            ✅             |
+| Call next / call specific                                  |         ❌         |        ❌        |      ◑       |               ◑                |            ✅             |
+| Start consultation / complete                              |         ❌         |        ❌        |      ❌      |               ◑                |            ✅             |
+| Skip / recall                                              |         ❌         |        ❌        |      ◑       |               ◑                |            ✅             |
+| Mark NO_SHOW                                               |         ❌         |        ❌        |      ◑       |               ❌               |            ✅             |
+| Cancel token (reason required)                             |         ❌         |        ❌        |      ◑       |               ❌               |            ✅             |
+| Open / pause / resume / close OPD session                  |         ❌         |        ❌        |      ❌      | ◑ if `can_self_manage_session` |            ✅             |
+| Set delay + public note                                    |         ❌         |        ❌        |      ◑       | ◑ if `can_self_manage_session` |            ✅             |
+| Cancel a whole session, open/close online booking          |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
+| Reopen a closed session                                    |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
+| Session statistics (`queue_stats`)                         |         ❌         |        ❌        |      ◑       |               ◑                |            ✅             |
+| Hospital settings, fees, payment toggle                    |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
+| Doctors, departments, shifts, schedules, exceptions        |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
+| Announcements (create/publish)                             |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
+| Dashboard statistics                                       |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
+| Payments, refunds (view / request / reject / execute)      |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
+| Audit logs                                                 |         ❌         |        ❌        |      ❌      |               ❌               |      ✅ (read-only)       |
+| Report exports (CSV); patient details on explicit opt-in   |         ❌         |        ❌        |      ❌      |               ❌               |       ✅ (audited)        |
+| Automatic refund policy and limit, patient alert settings  |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
+| Alerts about a booking (turn near, delay, reminders)       |     key holder     | own + key holder |      —       |               —                |             —             |
+| Staff accounts and roles                                   |         ❌         |        ❌        |      ❌      |               ❌               | ✅ (last admin protected) |
+| Direct writes to appointments / queue_states / payments    |         ❌         |        ❌        |      ❌      |               ❌               |    ❌ (functions only)    |
+| `svc_*` functions (payments, automatic refunds, SMS queue) |         ❌         |        ❌        |      ❌      |               ❌               |  ❌ (service role only)   |
 
 A receptionist row with `doctor_id = NULL` covers every doctor in the hospital. Rows with a
 `doctor_id` limit the receptionist to those doctors. A doctor login maps to exactly one doctor

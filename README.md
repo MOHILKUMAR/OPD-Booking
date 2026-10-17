@@ -4,6 +4,9 @@ Single-hospital OPD appointment, digital token and live queue system. Patients f
 a token for today or tomorrow, and watch the queue live so they arrive near their turn. Staff run
 the queue (check-in, call next, consultation, skip/recall, walk-ins), admins manage doctors,
 schedules, holidays, announcements, staff and refunds, and a waiting-room TV shows "now serving".
+The whole interface works in English and Hindi. Patients get "your turn is near", delay and
+reminder alerts (free, in the app and as browser notifications), admins download CSV reports,
+and cancelled paid bookings can be refunded automatically.
 
 **Stack:** React 19 · Vite 8 · TypeScript (strict) · Tailwind 4 · shadcn/ui · React Router ·
 TanStack Query · React Hook Form + Zod · Supabase (Postgres + RLS, Auth, Realtime, Edge Functions) ·

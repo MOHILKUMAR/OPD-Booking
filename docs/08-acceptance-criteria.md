@@ -1,6 +1,6 @@
 # 8. Acceptance criteria and where they are verified
 
-Status as of 2026-10-16. "Automated" means it runs in `npm test` / `npm run test:e2e` / the load
+Status as of 2026-10-18. "Automated" means it runs in `npm test` / `npm run test:e2e` / the load
 scripts and passed on that date.
 
 | #   | Criterion                                                                           | Verified by                                                                                                                                             | Status       |
@@ -38,3 +38,7 @@ scripts and passed on that date.
 | 18. Polling fallback                             | `useLiveQueue.test.tsx`, e2e                                                                                                                                                                                     | Automated                  |
 | 19. Patient-data privacy                         | `security.test.ts`, `pages.test.tsx`, e2e                                                                                                                                                                        | Automated                  |
 | 20. Mobile responsiveness                        | Playwright `mobile` project (Pixel 7): no horizontal scroll on home, directory, booking and tracking; screenshots reviewed                                                                                       | Automated                  |
+| 21. Report exports                               | `reports.test.ts` (order, paging, patient details only on opt-in, audited once, admin-only, ranges); `tests/unit/reports.test.tsx` (CSV columns, formula escaping, opt-in warning)                               | Automated                  |
+| 22. Automatic refunds                            | `automation.test.ts` (claim once per mode, limit, setting off, admin cannot double-start, initiated/processed notices, failure left for admin, pg_net wake-up); `handlers.test.ts` "automation"                  | Automated (mocked gateway) |
+| 23. Patient alerts                               | `alerts.test.ts` (turn near once per booking, queue progress, off switch, delay steps, visit reminders); `automation.test.ts` SMS queue (off by default, service-only, never shown in app)                       | Automated                  |
+| 24. Hindi interface                              | `tests/unit/i18n.test.tsx` (switch, remembered choice, `<html lang>`, Hindi errors, session reasons, notifications, dates); each screen's Hindi dictionary is type-checked for missing keys                      | Automated                  |
