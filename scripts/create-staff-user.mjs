@@ -37,7 +37,8 @@ const { data: hospital, error: hErr } = await db
   .select('id, name')
   .eq('slug', args.hospital)
   .maybeSingle()
-if (hErr || !hospital)
+if (hErr) fail(`Could not query hospitals: ${hErr.message} (check the server key)`)
+if (!hospital)
   fail(`Hospital "${args.hospital}" not found. Run the seed or insert your hospital row first.`)
 
 const password = randomBytes(15).toString('base64url')

@@ -27,15 +27,19 @@ const raw = execFileSync(
     ref,
     '--output-format',
     'json',
+    // new-style secret keys are masked unless revealed
+    '--reveal',
   ],
   { encoding: 'utf8', shell: process.platform === 'win32', stdio: ['ignore', 'pipe', 'ignore'] },
 )
 const start = Math.min(...['{', '['].map((c) => raw.indexOf(c)).filter((i) => i >= 0))
 const parsed = JSON.parse(raw.slice(start))
 const keys = Array.isArray(parsed) ? parsed : (Object.values(parsed).find(Array.isArray) ?? [])
-const pick = (pred) => keys.find(pred)
+// A usable key is plain base64url/JWT text; anything else is a masked display value.
+const usable = (k) => /^[A-Za-z0-9_.-]{30,}$/.test(k?.api_key ?? k?.key ?? '')
 const server =
-  pick((k) => k.type === 'secret') ?? pick((k) => k.name === 'service_role' && k.type === 'legacy')
+  keys.find((k) => k.type === 'secret' && usable(k)) ??
+  keys.find((k) => k.name === 'service_role' && k.type === 'legacy' && usable(k))
 const serverKey = server?.api_key ?? server?.key
 if (!serverKey) {
   console.error('Could not read a server key for this project. Is the CLI logged in?')
