@@ -142,6 +142,16 @@ new keys, also set `SUPABASE_SECRET_KEY`. Set `ALLOWED_ORIGINS` to the exact Pag
 
 ## 4. First administrator
 
+Shortest path, using your Supabase CLI login for the linked project:
+
+```bash
+node scripts/bootstrap-admin.mjs --email you@hospital.in --name "OPD Admin" --role admin
+```
+
+It prints a one-time temporary password in your terminal. The script fetches the project's server
+key through the CLI and passes it only to `create-staff-user.mjs`, so the key is never printed.
+To do the same by hand:
+
 ```bash
 SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=sb_secret_... \
   node scripts/create-staff-user.mjs --email you@hospital.in --name "OPD Admin" --role admin --hospital demo-hospital
