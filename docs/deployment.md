@@ -14,18 +14,24 @@ Deployed 2026-10-18 and checked end to end against the live backend: anonymous b
 refusal, tracking with and without the key, masked identity, PII-free TV board, cancellation, and
 the Realtime websocket.
 
-| Piece            | Value                                                                                                    |
-| ---------------- | -------------------------------------------------------------------------------------------------------- |
-| Site             | https://mediqueue-5b5.pages.dev (Cloudflare Pages project `mediqueue`, direct upload from `dist/`)       |
-| Supabase project | `mediqueue_OPD`, ref `aoeejxunlbidgmyihmha`, region **ap-southeast-1 (Singapore)**                       |
-| Data             | `supabase/seed.sql` demo hospital (`demo-hospital`) and fictional doctors                                |
-| Auth             | anonymous sign-ins on, email confirmation off (no SMTP), site URL = the Pages URL                        |
-| Edge Functions   | `admin-create-staff`, `payments-*` (payments off: `PAYMENTS_ENABLED=false`); `housekeeping` not deployed |
-| Scheduled jobs   | pg_cron `mediqueue-housekeeping` every 10 minutes                                                        |
-| Frontend env     | `VITE_APP_ENV=staging` (demo banner on), `VITE_PAYMENTS_ENABLED=false`, no Turnstile key                 |
+| Piece            | Value                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Site             | https://mediqueue-5b5.pages.dev (Cloudflare Pages project `mediqueue`, direct upload from `dist/`)                                          |
+| Supabase project | `mediqueue_OPD`, ref `aoeejxunlbidgmyihmha`, region **ap-southeast-1 (Singapore)**                                                          |
+| Data             | `supabase/seed.sql` demo hospital (`demo-hospital`) and fictional doctors                                                                   |
+| Auth             | anonymous sign-ins on, email confirmation off (no SMTP), site URL = the Pages URL                                                           |
+| Edge Functions   | `admin-create-staff`, `payments-*` with Razorpay **test** keys (`PAYMENTS_ENABLED=true`, `RAZORPAY_MODE=test`); `housekeeping` not deployed |
+| Scheduled jobs   | pg_cron `mediqueue-housekeeping` every 10 minutes                                                                                           |
+| Frontend env     | `VITE_APP_ENV=staging` (demo banner on), `VITE_PAYMENTS_ENABLED=true`, no Turnstile key                                                     |
+| Payments         | hospital online payments on; ₹10 test fee on Dr. Vikram Iyer's Morning OPD, ₹50 on Dr. Arjun Mehta's Afternoon OPD                          |
 
 To redeploy the frontend after a change, build with the same `VITE_*` values and run
 `npx wrangler pages deploy dist --project-name mediqueue --branch main`.
+
+Razorpay test payments were verified on 2026-10-18 on the live site. MQ-9Y5J4HND was confirmed
+through checkout signature verification. MQ-JTPCDA5B was confirmed by the webhook
+(`payment.authorized`, `payment.captured`, then `order.paid` recognised as already confirmed),
+with no duplicate tokens.
 
 Notes from this deployment:
 

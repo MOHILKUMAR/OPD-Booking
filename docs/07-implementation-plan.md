@@ -42,7 +42,8 @@ Legend: ✅ done and tested · 🟡 done, needs a hosted project to verify · �
 - ✅ Edge Functions: create order, verify (signature + gateway fetch + capture), webhook (raw-body
   HMAC, dedupe), admin refund (idempotency header), staff provisioning, housekeeping
 - ✅ Holds with expiry, late-payment handling, refund requests (never automatic promises)
-- 🟡 End-to-end with Razorpay test keys (needs a Razorpay test account + deployed functions)
+- ✅ End-to-end with Razorpay test keys on the live demo: checkout-signature path and webhook path
+  both confirmed real test payments (2026-10-18)
 
 ## Phase G: quality
 
