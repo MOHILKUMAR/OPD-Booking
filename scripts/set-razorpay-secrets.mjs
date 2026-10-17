@@ -33,10 +33,15 @@ async function askHidden(question) {
   return (value ?? '').trim()
 }
 
-console.log(`Razorpay TEST credentials for Supabase project ${ref} (input is hidden).`)
-const keyId = await askHidden('Key ID (rzp_test_...): ')
-const keySecret = await askHidden('Key Secret: ')
-const webhookSecret = await askHidden('Webhook secret (same text as in the Razorpay webhook): ')
+console.log(`Razorpay TEST credentials for Supabase project ${ref}.`)
+console.log(
+  'Paste each value (right-click) and press Enter. Nothing will appear on screen; that is normal.\n',
+)
+const keyId = await askHidden('1/3  Paste your Key ID (starts with rzp_test_) and press Enter: ')
+const keySecret = await askHidden('2/3  Paste your Key Secret and press Enter: ')
+const webhookSecret = await askHidden(
+  '3/3  Paste your webhook secret (same text as in the Razorpay webhook) and press Enter: ',
+)
 rl.close()
 
 const problems = []
@@ -59,19 +64,26 @@ try {
     `RAZORPAY_KEY_ID=${keyId}\nRAZORPAY_KEY_SECRET=${keySecret}\nRAZORPAY_WEBHOOK_SECRET=${webhookSecret}\n`,
     { mode: 0o600 },
   )
-  const result = spawnSync(
-    'npx',
-    ['--yes', 'supabase@latest', 'secrets', 'set', '--env-file', `"${file}"`, '--project-ref', ref],
-    { shell: process.platform === 'win32', encoding: 'utf8' },
-  )
-  if (result.status !== 0) {
-    console.error(
-      'Saving failed:',
-      (result.stderr || result.stdout || '').split('\n').slice(-3).join(' '),
-    )
+  const cli = (args) =>
+    spawnSync('npx', ['--yes', 'supabase@latest', ...args, '--project-ref', ref], {
+      shell: process.platform === 'win32',
+      encoding: 'utf8',
+    })
+  const set = cli(['secrets', 'set', '--env-file', `"${file}"`])
+  // The CLI can exit 0 even when it reports an error, so check its JSON and then read back.
+  const setOut = `${set.stdout ?? ''}${set.stderr ?? ''}`
+  if (set.status !== 0 || /"_tag":"Error"/.test(setOut) || !/"count":3/.test(setOut)) {
+    console.error('Saving failed:', setOut.trim().split('\n').slice(-2).join(' '))
     process.exit(1)
   }
-  console.log('Saved RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET and RAZORPAY_WEBHOOK_SECRET.')
+  const list = cli(['secrets', 'list'])
+  const names = ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET']
+  const missing = names.filter((n) => !(list.stdout ?? '').includes(`"name":"${n}"`))
+  if (missing.length) {
+    console.error(`Saving could not be confirmed; missing on the project: ${missing.join(', ')}`)
+    process.exit(1)
+  }
+  console.log(`Saved and confirmed on project ${ref}: ${names.join(', ')}.`)
 } finally {
   rmSync(dir, { recursive: true, force: true })
 }
