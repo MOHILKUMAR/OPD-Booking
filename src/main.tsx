@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router'
 import { AuthProvider } from '@/auth/AuthProvider'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { LanguageProvider } from '@/i18n'
 import { configErrors, isConfigured } from '@/lib/env'
 import { router } from '@/router'
 import './index.css'
@@ -40,14 +41,16 @@ function SetupRequired() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {isConfigured ? (
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <RouterProvider router={router} />
-            <Toaster richColors closeButton position="top-center" />
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+      <LanguageProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TooltipProvider>
+              <RouterProvider router={router} />
+              <Toaster richColors closeButton position="top-center" />
+            </TooltipProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </LanguageProvider>
     ) : (
       <SetupRequired />
     )}

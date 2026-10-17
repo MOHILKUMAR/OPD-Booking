@@ -37,15 +37,80 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useHospital, useToday } from '@/hooks/useHospital'
+import { defineMessages, useT } from '@/i18n'
+import { common } from '@/i18n/common'
 import { errorMessage } from '@/lib/errors'
 import { formatDate, formatTimeRange } from '@/lib/format'
 import type { ExceptionKind } from '@/types/database'
 
-const KINDS: { value: ExceptionKind; label: string; scope: 'any' | 'shift' }[] = [
-  { value: 'HOLIDAY', label: 'Holiday (closed)', scope: 'any' },
-  { value: 'CLOSED', label: 'Closure / doctor leave', scope: 'any' },
-  { value: 'MODIFIED_HOURS', label: 'Changed hours (one day)', scope: 'shift' },
-  { value: 'CAPACITY_CHANGE', label: 'Changed token limit (one day)', scope: 'shift' },
+const messages = defineMessages({
+  en: {
+    'kind.HOLIDAY': 'Holiday (closed)',
+    'kind.CLOSED': 'Closure / doctor leave',
+    'kind.MODIFIED_HOURS': 'Changed hours (one day)',
+    'kind.CAPACITY_CHANGE': 'Changed token limit (one day)',
+    saved: 'Saved. Patients now see this on the booking pages.',
+    title: 'Holidays & closures',
+    description:
+      "One-day changes to the weekly schedule. Existing bookings are not cancelled automatically — use the queue console's Cancel session if needed.",
+    add: 'Add',
+    empty: 'No upcoming exceptions',
+    date: 'Date',
+    type: 'Type',
+    appliesTo: 'Applies to',
+    details: 'Details',
+    reasonPublic: 'Reason (public)',
+    doctor: 'Doctor',
+    oneShift: '{doctor} (one shift)',
+    wholeHospital: 'Whole hospital',
+    tokens: '{n} tokens',
+    delete: 'Delete',
+    dialogTitle: 'Add holiday or schedule change',
+    shift: 'Shift',
+    allShifts: 'All of this doctor’s shifts',
+    start: 'Start',
+    end: 'End',
+    tokenLimit: 'Token limit for the day',
+    reasonShown: 'Reason shown to patients',
+    reasonPlaceholder: 'e.g. Diwali holiday',
+  },
+  hi: {
+    'kind.HOLIDAY': 'छुट्टी (बंद)',
+    'kind.CLOSED': 'बंदी / डॉक्टर की छुट्टी',
+    'kind.MODIFIED_HOURS': 'बदला हुआ समय (एक दिन)',
+    'kind.CAPACITY_CHANGE': 'बदली हुई टोकन सीमा (एक दिन)',
+    saved: 'सहेजा गया। अब मरीज़ों को यह बुकिंग पेजों पर दिखेगा।',
+    title: 'छुट्टियाँ और बंदी',
+    description:
+      'साप्ताहिक समय-सारणी में एक दिन के बदलाव। पहले से हुई बुकिंग अपने-आप रद्द नहीं होतीं — ज़रूरत हो तो कतार कंसोल में “सत्र रद्द करें” का उपयोग करें।',
+    add: 'जोड़ें',
+    empty: 'आगे के लिए कोई छुट्टी या बदलाव नहीं',
+    date: 'तारीख़',
+    type: 'प्रकार',
+    appliesTo: 'किस पर लागू',
+    details: 'विवरण',
+    reasonPublic: 'कारण (सार्वजनिक)',
+    doctor: 'डॉक्टर',
+    oneShift: '{doctor} (एक शिफ़्ट)',
+    wholeHospital: 'पूरा अस्पताल',
+    tokens: '{n} टोकन',
+    delete: 'हटाएँ',
+    dialogTitle: 'छुट्टी या समय-सारणी में बदलाव जोड़ें',
+    shift: 'शिफ़्ट',
+    allShifts: 'इस डॉक्टर की सभी शिफ़्ट',
+    start: 'शुरू',
+    end: 'समाप्त',
+    tokenLimit: 'उस दिन की टोकन सीमा',
+    reasonShown: 'मरीज़ों को दिखने वाला कारण',
+    reasonPlaceholder: 'जैसे दीवाली की छुट्टी',
+  },
+})
+
+const KINDS: { value: ExceptionKind; scope: 'any' | 'shift' }[] = [
+  { value: 'HOLIDAY', scope: 'any' },
+  { value: 'CLOSED', scope: 'any' },
+  { value: 'MODIFIED_HOURS', scope: 'shift' },
+  { value: 'CAPACITY_CHANGE', scope: 'shift' },
 ]
 const NONE = '__none'
 
@@ -64,6 +129,8 @@ export default function ExceptionsPage() {
   const { data: hospital } = useHospital()
   const today = useToday()
   const queryClient = useQueryClient()
+  const t = useT(messages)
+  const c = useT(common)
   const list = useQuery({
     queryKey: ['admin-exceptions', hospital?.id, today],
     queryFn: () => fetchExceptions(hospital!.id, today),
@@ -98,7 +165,7 @@ export default function ExceptionsPage() {
         reason: d.reason.trim(),
       }),
     onSuccess: () => {
-      toast.success('Saved. Patients now see this on the booking pages.')
+      toast.success(t('saved'))
       setDraft(null)
       void queryClient.invalidateQueries({ queryKey: ['admin-exceptions'] })
     },
@@ -115,8 +182,8 @@ export default function ExceptionsPage() {
   return (
     <div>
       <PageHeader
-        title="Holidays & closures"
-        description="One-day changes to the weekly schedule. Existing bookings are not cancelled automatically — use the queue console's Cancel session if needed."
+        title={t('title')}
+        description={t('description')}
         actions={
           <Button
             onClick={() =>
@@ -132,7 +199,7 @@ export default function ExceptionsPage() {
               })
             }
           >
-            <Plus /> Add
+            <Plus /> {t('add')}
           </Button>
         }
       />
@@ -141,58 +208,63 @@ export default function ExceptionsPage() {
       ) : list.isError ? (
         <ErrorState error={list.error} onRetry={() => list.refetch()} />
       ) : list.data.length === 0 ? (
-        <EmptyState title="No upcoming exceptions" />
+        <EmptyState title={t('empty')} />
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Applies to</TableHead>
-                <TableHead>Details</TableHead>
-                <TableHead>Reason (public)</TableHead>
+                <TableHead>{t('date')}</TableHead>
+                <TableHead>{t('type')}</TableHead>
+                <TableHead>{t('appliesTo')}</TableHead>
+                <TableHead>{t('details')}</TableHead>
+                <TableHead>{t('reasonPublic')}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {list.data.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell className="whitespace-nowrap">
-                    {formatDate(e.exception_date)}
-                  </TableCell>
-                  <TableCell>
-                    <ToneBadge
-                      color={e.kind === 'HOLIDAY' || e.kind === 'CLOSED' ? 'red' : 'amber'}
-                    >
-                      {KINDS.find((k) => k.value === e.kind)?.label}
-                    </ToneBadge>
-                  </TableCell>
-                  <TableCell>
-                    {e.doctor_id
-                      ? `${doctorName(e.doctor_id) ?? 'Doctor'}${e.shift_id ? ' (one shift)' : ''}`
-                      : 'Whole hospital'}
-                  </TableCell>
-                  <TableCell>
-                    {e.kind === 'MODIFIED_HOURS' &&
-                      e.start_time &&
-                      e.end_time &&
-                      formatTimeRange(e.start_time, e.end_time)}
-                    {e.kind === 'CAPACITY_CHANGE' && `${e.max_tokens} tokens`}
-                  </TableCell>
-                  <TableCell className="max-w-xs">{e.reason}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Delete"
-                      onClick={() => remove.mutate(e.id)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {list.data.map((e) => {
+                const doctor = doctorName(e.doctor_id) ?? t('doctor')
+                return (
+                  <TableRow key={e.id}>
+                    <TableCell className="whitespace-nowrap">
+                      {formatDate(e.exception_date)}
+                    </TableCell>
+                    <TableCell>
+                      <ToneBadge
+                        color={e.kind === 'HOLIDAY' || e.kind === 'CLOSED' ? 'red' : 'amber'}
+                      >
+                        {t(`kind.${e.kind}`)}
+                      </ToneBadge>
+                    </TableCell>
+                    <TableCell>
+                      {e.doctor_id
+                        ? e.shift_id
+                          ? t('oneShift', { doctor })
+                          : doctor
+                        : t('wholeHospital')}
+                    </TableCell>
+                    <TableCell>
+                      {e.kind === 'MODIFIED_HOURS' &&
+                        e.start_time &&
+                        e.end_time &&
+                        formatTimeRange(e.start_time, e.end_time)}
+                      {e.kind === 'CAPACITY_CHANGE' && t('tokens', { n: e.max_tokens })}
+                    </TableCell>
+                    <TableCell className="max-w-xs">{e.reason}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={t('delete')}
+                        onClick={() => remove.mutate(e.id)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>
@@ -201,13 +273,13 @@ export default function ExceptionsPage() {
       <Dialog open={!!draft} onOpenChange={(o) => !o && setDraft(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add holiday or schedule change</DialogTitle>
+            <DialogTitle>{t('dialogTitle')}</DialogTitle>
           </DialogHeader>
           {draft && (
             <div className="grid gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="ex-date">Date</Label>
+                  <Label htmlFor="ex-date">{t('date')}</Label>
                   <Input
                     id="ex-date"
                     type="date"
@@ -217,7 +289,7 @@ export default function ExceptionsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Type</Label>
+                  <Label>{t('type')}</Label>
                   <Select
                     value={draft.kind}
                     onValueChange={(v) => setDraft({ ...draft, kind: v as ExceptionKind })}
@@ -228,7 +300,7 @@ export default function ExceptionsPage() {
                     <SelectContent>
                       {KINDS.map((k) => (
                         <SelectItem key={k.value} value={k.value}>
-                          {k.label}
+                          {t(`kind.${k.value}`)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -236,7 +308,7 @@ export default function ExceptionsPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Doctor</Label>
+                <Label>{t('doctor')}</Label>
                 <Select
                   value={draft.doctorId}
                   onValueChange={(v) => setDraft({ ...draft, doctorId: v, shiftId: NONE })}
@@ -245,7 +317,7 @@ export default function ExceptionsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {!needsShift && <SelectItem value={NONE}>Whole hospital</SelectItem>}
+                    {!needsShift && <SelectItem value={NONE}>{t('wholeHospital')}</SelectItem>}
                     {doctors.data?.map((d) => (
                       <SelectItem key={d.id} value={d.id}>
                         {d.full_name}
@@ -256,7 +328,7 @@ export default function ExceptionsPage() {
               </div>
               {draft.doctorId !== NONE && (
                 <div className="space-y-1.5">
-                  <Label>Shift</Label>
+                  <Label>{t('shift')}</Label>
                   <Select
                     value={draft.shiftId}
                     onValueChange={(v) => setDraft({ ...draft, shiftId: v })}
@@ -265,9 +337,7 @@ export default function ExceptionsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {!needsShift && (
-                        <SelectItem value={NONE}>All of this doctor’s shifts</SelectItem>
-                      )}
+                      {!needsShift && <SelectItem value={NONE}>{t('allShifts')}</SelectItem>}
                       {shifts.data?.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.name} ({formatTimeRange(s.start_time, s.end_time)})
@@ -280,7 +350,7 @@ export default function ExceptionsPage() {
               {draft.kind === 'MODIFIED_HOURS' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="ex-start">Start</Label>
+                    <Label htmlFor="ex-start">{t('start')}</Label>
                     <Input
                       id="ex-start"
                       type="time"
@@ -289,7 +359,7 @@ export default function ExceptionsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="ex-end">End</Label>
+                    <Label htmlFor="ex-end">{t('end')}</Label>
                     <Input
                       id="ex-end"
                       type="time"
@@ -301,7 +371,7 @@ export default function ExceptionsPage() {
               )}
               {draft.kind === 'CAPACITY_CHANGE' && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="ex-max">Token limit for the day</Label>
+                  <Label htmlFor="ex-max">{t('tokenLimit')}</Label>
                   <Input
                     id="ex-max"
                     type="number"
@@ -313,13 +383,13 @@ export default function ExceptionsPage() {
                 </div>
               )}
               <div className="space-y-1.5">
-                <Label htmlFor="ex-reason">Reason shown to patients</Label>
+                <Label htmlFor="ex-reason">{t('reasonShown')}</Label>
                 <Input
                   id="ex-reason"
                   maxLength={300}
                   value={draft.reason}
                   onChange={(e) => setDraft({ ...draft, reason: e.target.value })}
-                  placeholder="e.g. Diwali holiday"
+                  placeholder={t('reasonPlaceholder')}
                 />
               </div>
             </div>
@@ -334,7 +404,7 @@ export default function ExceptionsPage() {
               }
               onClick={() => draft && create.mutate(draft)}
             >
-              Save
+              {c('save')}
             </Button>
           </DialogFooter>
         </DialogContent>

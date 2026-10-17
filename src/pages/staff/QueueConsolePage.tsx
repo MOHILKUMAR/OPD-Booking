@@ -46,18 +46,158 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToday } from '@/hooks/useHospital'
 import { useLiveQueue } from '@/hooks/useLiveQueue'
 import { useStaffScope } from '@/hooks/useStaffScope'
+import { defineMessages, useT } from '@/i18n'
+import { common } from '@/i18n/common'
 import { toAppError } from '@/lib/errors'
 import { formatTimeRange } from '@/lib/format'
 import { ACTIONS, availableActions, type QueueAction } from '@/lib/queue-transitions'
 import { cn } from '@/lib/utils'
 import type { AppRole, SessionRow, StaffAppointment } from '@/types/database'
 
-const GROUPS: { title: string; statuses: StaffAppointment['status'][]; collapsed?: boolean }[] = [
-  { title: 'With the doctor', statuses: ['CALLED', 'IN_CONSULTATION'] },
-  { title: 'Checked in, waiting', statuses: ['ARRIVED', 'WAITING'] },
-  { title: 'Booked, not arrived', statuses: ['BOOKED', 'CONFIRMED'] },
-  { title: 'Skipped', statuses: ['SKIPPED'] },
-  { title: 'Finished', statuses: ['COMPLETED', 'NO_SHOW', 'CANCELLED'], collapsed: true },
+const messages = defineMessages({
+  en: {
+    loadingSessions: "Loading today's sessions",
+    title: 'Queue console',
+    description: "Today's OPD sessions you can manage.",
+    noSessionsTitle: 'No OPD sessions today',
+    noSessionsBody: 'No shift you are assigned to is scheduled today.',
+    session: 'Session',
+    chooseSession: "Choose a doctor's session",
+    roles: 'roles: {roles}',
+    'role.admin': 'admin',
+    'role.receptionist': 'receptionist',
+    'role.doctor': 'doctor',
+    delay: 'Delay {minutes} min',
+    startOpd: 'Start OPD',
+    reopenOpd: 'Reopen OPD',
+    pause: 'Pause',
+    resume: 'Resume',
+    delayNote: 'Delay / note',
+    endOpd: 'End OPD',
+    nowServing: 'Now serving',
+    nextInLine: 'Next in line',
+    waiting: 'Waiting',
+    seen: 'Seen',
+    tokensIssued: 'Tokens issued',
+    averages: 'Average consultation {consult} min · average wait after check-in {wait} min',
+    callNext: 'Call next patient',
+    scheduledSelf: 'Patients can be checked in now. Calling starts once you start the OPD.',
+    scheduledOther:
+      'Patients can be checked in now. Calling starts once the doctor or an administrator starts the OPD.',
+    noTokensTitle: 'No tokens yet',
+    noTokensBody: 'Tokens appear here as patients book or walk in.',
+    loadingTokens: 'Loading tokens',
+    'group.withDoctor': 'With the doctor',
+    'group.waiting': 'Checked in, waiting',
+    'group.notArrived': 'Booked, not arrived',
+    'group.skipped': 'Skipped',
+    'group.finished': 'Finished',
+    age: '{age} y',
+    skippedTimes: 'skipped {count}×',
+    // {action} is the button label in lower case, {status} the new status (Hindi reads better).
+    actionDone: 'Token {token}: {action}',
+    calledToken: 'Called token {token}',
+    'control.OPEN': 'Session open done',
+    'control.PAUSE': 'Session pause done',
+    'control.RESUME': 'Session resume done',
+    'control.CLOSE': 'Session close done',
+    'control.CANCEL': 'Session cancel done',
+    'control.BOOKING_OPEN': 'Session booking open done',
+    'control.BOOKING_CLOSE': 'Session booking close done',
+    'control.SET_DELAY': 'Session set delay done',
+    cancelTitle: 'Cancel token {token}?',
+    cancelBody:
+      'The patient will see this reason. If they paid online, a refund request is recorded for an administrator to process.',
+    reason: 'Reason',
+    keepToken: 'Keep token',
+    delayTitle: 'Delay and public note',
+    delayBody:
+      'Shown to patients on the tracking page and the waiting-room display. No patient details.',
+    delayMinutes: 'Delay (minutes, 0 to clear)',
+    note: 'Note',
+    notePlaceholder: 'e.g. Doctor attending an emergency',
+    closeTitle: 'End OPD with patients still waiting?',
+    closeBody:
+      'Checked-in patients who were not seen will be cancelled (refund requested if they paid). Patients who never arrived are marked no-show.',
+    keepOpen: 'Keep OPD open',
+    endAnyway: 'End OPD anyway',
+  },
+  hi: {
+    loadingSessions: 'आज के सत्र लोड हो रहे हैं',
+    title: 'कतार कंसोल',
+    description: 'आज के ओपीडी सत्र, जिन्हें आप संभाल सकते हैं।',
+    noSessionsTitle: 'आज कोई ओपीडी सत्र नहीं है',
+    noSessionsBody: 'आपको सौंपी गई कोई भी शिफ़्ट आज निर्धारित नहीं है।',
+    session: 'सत्र',
+    chooseSession: 'डॉक्टर का सत्र चुनें',
+    roles: 'भूमिकाएँ: {roles}',
+    'role.admin': 'एडमिन',
+    'role.receptionist': 'रिसेप्शनिस्ट',
+    'role.doctor': 'डॉक्टर',
+    delay: 'देरी {minutes} मिनट',
+    startOpd: 'ओपीडी शुरू करें',
+    reopenOpd: 'ओपीडी फिर से खोलें',
+    pause: 'रोकें',
+    resume: 'फिर चालू करें',
+    delayNote: 'देरी / सूचना',
+    endOpd: 'ओपीडी समाप्त करें',
+    nowServing: 'अभी का टोकन',
+    nextInLine: 'अगला टोकन',
+    waiting: 'प्रतीक्षा में',
+    seen: 'देखे गए',
+    tokensIssued: 'जारी टोकन',
+    averages: 'औसत परामर्श {consult} मिनट · चेक-इन के बाद औसत प्रतीक्षा {wait} मिनट',
+    callNext: 'अगले मरीज़ को बुलाएँ',
+    scheduledSelf:
+      'मरीज़ों का चेक-इन अभी किया जा सकता है। आपके ओपीडी शुरू करते ही बुलाना शुरू होगा।',
+    scheduledOther:
+      'मरीज़ों का चेक-इन अभी किया जा सकता है। डॉक्टर या प्रशासक के ओपीडी शुरू करते ही बुलाना शुरू होगा।',
+    noTokensTitle: 'अभी कोई टोकन नहीं',
+    noTokensBody: 'मरीज़ों के बुक करने या वॉक-इन आने पर टोकन यहाँ दिखेंगे।',
+    loadingTokens: 'टोकन लोड हो रहे हैं',
+    'group.withDoctor': 'डॉक्टर के पास',
+    'group.waiting': 'चेक-इन हो गया, प्रतीक्षा में',
+    'group.notArrived': 'बुक, पर अभी नहीं आए',
+    'group.skipped': 'छोड़े गए',
+    'group.finished': 'समाप्त',
+    age: '{age} वर्ष',
+    skippedTimes: '{count} बार छोड़ा गया',
+    actionDone: 'टोकन {token}: {status}',
+    calledToken: 'टोकन {token} को बुलाया गया',
+    'control.OPEN': 'ओपीडी शुरू हो गई',
+    'control.PAUSE': 'ओपीडी रोक दी गई',
+    'control.RESUME': 'ओपीडी फिर चालू हो गई',
+    'control.CLOSE': 'ओपीडी समाप्त हो गई',
+    'control.CANCEL': 'सत्र रद्द हो गया',
+    'control.BOOKING_OPEN': 'ऑनलाइन बुकिंग खुल गई',
+    'control.BOOKING_CLOSE': 'ऑनलाइन बुकिंग बंद हो गई',
+    'control.SET_DELAY': 'देरी और सूचना सहेज दी गई',
+    cancelTitle: 'टोकन {token} रद्द करें?',
+    cancelBody:
+      'मरीज़ को यह कारण दिखेगा। अगर उन्होंने ऑनलाइन भुगतान किया है, तो रिफ़ंड का अनुरोध दर्ज हो जाएगा, जिसे प्रशासक पूरा करेंगे।',
+    reason: 'कारण',
+    keepToken: 'टोकन रहने दें',
+    delayTitle: 'देरी और सार्वजनिक सूचना',
+    delayBody:
+      'यह मरीज़ों को ट्रैकिंग पेज और प्रतीक्षा-कक्ष के डिस्प्ले पर दिखता है। इसमें मरीज़ की कोई जानकारी न लिखें।',
+    delayMinutes: 'देरी (मिनट में, हटाने के लिए 0)',
+    note: 'सूचना',
+    notePlaceholder: 'जैसे: डॉक्टर एक इमरजेंसी में हैं',
+    closeTitle: 'मरीज़ अभी प्रतीक्षा में हैं। फिर भी ओपीडी समाप्त करें?',
+    closeBody:
+      'चेक-इन किए हुए जिन मरीज़ों को देखा नहीं गया, उनके टोकन रद्द हो जाएँगे (भुगतान किया हो तो रिफ़ंड का अनुरोध दर्ज होगा)। जो मरीज़ आए ही नहीं, उन्हें "नहीं आए" दर्ज किया जाएगा।',
+    keepOpen: 'ओपीडी चालू रखें',
+    endAnyway: 'फिर भी ओपीडी समाप्त करें',
+  },
+})
+type Key = keyof typeof messages.en
+
+const GROUPS: { title: Key; statuses: StaffAppointment['status'][]; collapsed?: boolean }[] = [
+  { title: 'group.withDoctor', statuses: ['CALLED', 'IN_CONSULTATION'] },
+  { title: 'group.waiting', statuses: ['ARRIVED', 'WAITING'] },
+  { title: 'group.notArrived', statuses: ['BOOKED', 'CONFIRMED'] },
+  { title: 'group.skipped', statuses: ['SKIPPED'] },
+  { title: 'group.finished', statuses: ['COMPLETED', 'NO_SHOW', 'CANCELLED'], collapsed: true },
 ]
 
 export default function QueueConsolePage() {
@@ -65,6 +205,7 @@ export default function QueueConsolePage() {
   const today = useToday()
   const queryClient = useQueryClient()
   const [params, setParams] = useSearchParams()
+  const t = useT(messages)
   const doctorIds = scope.doctors.map((d) => d.id)
 
   const sessions = useQuery({
@@ -81,27 +222,24 @@ export default function QueueConsolePage() {
     (list.length === 1 ? list[0] : undefined)
 
   if (scope.doctorsQuery.isPending || (sessions.isPending && doctorIds.length > 0))
-    return <PageSpinner label="Loading today's sessions" />
+    return <PageSpinner label={t('loadingSessions')} />
   if (sessions.isError)
     return <ErrorState error={sessions.error} onRetry={() => sessions.refetch()} />
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Queue console" description="Today's OPD sessions you can manage." />
+      <PageHeader title={t('title')} description={t('description')} />
       {list.length === 0 ? (
-        <EmptyState
-          title="No OPD sessions today"
-          description="No shift you are assigned to is scheduled today."
-        />
+        <EmptyState title={t('noSessionsTitle')} description={t('noSessionsBody')} />
       ) : (
         <div className="max-w-md">
-          <Label className="mb-1.5">Session</Label>
+          <Label className="mb-1.5">{t('session')}</Label>
           <Select
             value={selected?.shift_id ?? ''}
             onValueChange={(v) => setParams({ shift: v }, { replace: true })}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Choose a doctor's session" />
+              <SelectValue placeholder={t('chooseSession')} />
             </SelectTrigger>
             <SelectContent>
               {list.map((s) => {
@@ -148,6 +286,8 @@ function SessionConsole({
   onSessionChanged: () => void
 }) {
   const queryClient = useQueryClient()
+  const t = useT(messages)
+  const c = useT(common)
   const qsId = session.queue_state_id
   const listKey = ['queue', qsId]
   const live = useLiveQueue({
@@ -190,7 +330,13 @@ function SessionConsole({
     mutationFn: (v: { appt: StaffAppointment; action: QueueAction; reason?: string }) =>
       queueAction(v.appt.id, v.action, { reason: v.reason, expectedVersion: v.appt.version }),
     onSuccess: (_r, v) => {
-      toast.success(`Token ${v.appt.token_no}: ${ACTIONS[v.action].label.toLowerCase()}`)
+      toast.success(
+        t('actionDone', {
+          token: v.appt.token_no,
+          action: c(`action.${v.action}`).toLowerCase(),
+          status: c(`appt.${ACTIONS[v.action].target}`),
+        }),
+      )
       refresh()
     },
     onError,
@@ -198,7 +344,7 @@ function SessionConsole({
   const next = useMutation({
     mutationFn: () => callNext(qsId!),
     onSuccess: (r) => {
-      toast.success(`Called token ${r.token_no}`)
+      toast.success(t('calledToken', { token: r.token_no }))
       refresh()
     },
     onError,
@@ -211,7 +357,7 @@ function SessionConsole({
       force?: boolean
     }) => sessionControl({ shiftId: session.shift_id, sessionDate: session.session_date, ...v }),
     onSuccess: (_r, v) => {
-      toast.success(`Session ${v.action.toLowerCase().replace('_', ' ')} done`)
+      toast.success(t(`control.${v.action}`))
       setConfirmClose(null)
       refresh()
     },
@@ -251,14 +397,14 @@ function SessionConsole({
           <div>
             <CardTitle className="text-lg">{doctorName}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              {session.shift_name} · {formatTimeRange(session.start_time, session.end_time)} ·
-              roles: {roles.join(', ')}
+              {session.shift_name} · {formatTimeRange(session.start_time, session.end_time)} ·{' '}
+              {t('roles', { roles: roles.map((r) => t(`role.${r}`)).join(', ') })}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <SessionStatusBadge status={status} />
               {(q?.delay_minutes ?? session.delay_minutes) > 0 && (
                 <ToneBadge color="amber">
-                  Delay {q?.delay_minutes ?? session.delay_minutes} min
+                  {t('delay', { minutes: q?.delay_minutes ?? session.delay_minutes })}
                 </ToneBadge>
               )}
               {qsId && (
@@ -269,7 +415,7 @@ function SessionConsole({
           <div className="flex flex-wrap gap-2">
             {canManage && (status === 'SCHEDULED' || (status === 'CLOSED' && isAdmin)) && (
               <Button onClick={() => control.mutate({ action: 'OPEN' })} disabled={busy}>
-                <Play /> {status === 'CLOSED' ? 'Reopen OPD' : 'Start OPD'}
+                <Play /> {status === 'CLOSED' ? t('reopenOpd') : t('startOpd')}
               </Button>
             )}
             {canManage && status === 'OPEN' && (
@@ -278,17 +424,17 @@ function SessionConsole({
                 onClick={() => control.mutate({ action: 'PAUSE' })}
                 disabled={busy}
               >
-                <Pause /> Pause
+                <Pause /> {t('pause')}
               </Button>
             )}
             {canManage && status === 'PAUSED' && (
               <Button onClick={() => control.mutate({ action: 'RESUME' })} disabled={busy}>
-                <Play /> Resume
+                <Play /> {t('resume')}
               </Button>
             )}
             {canDelay && status !== 'CLOSED' && status !== 'CANCELLED' && (
               <Button variant="outline" onClick={() => setDelayOpen(true)} disabled={busy}>
-                <Timer /> Delay / note
+                <Timer /> {t('delayNote')}
               </Button>
             )}
             {canManage && (status === 'OPEN' || status === 'PAUSED') && (
@@ -298,26 +444,28 @@ function SessionConsole({
                 onClick={() => control.mutate({ action: 'CLOSE' })}
                 disabled={busy}
               >
-                <Power /> End OPD
+                <Power /> {t('endOpd')}
               </Button>
             )}
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            <BigStat label="Now serving" value={q?.current_token_no ?? '–'} highlight />
-            <BigStat label="Next in line" value={q?.next_token_no ?? '–'} />
-            <BigStat label="Waiting" value={q?.waiting_count ?? 0} />
-            <BigStat label="Seen" value={q?.completed_count ?? 0} />
+            <BigStat label={t('nowServing')} value={q?.current_token_no ?? '–'} highlight />
+            <BigStat label={t('nextInLine')} value={q?.next_token_no ?? '–'} />
+            <BigStat label={t('waiting')} value={q?.waiting_count ?? 0} />
+            <BigStat label={t('seen')} value={q?.completed_count ?? 0} />
             <BigStat
-              label="Tokens issued"
+              label={t('tokensIssued')}
               value={`${q?.issued_count ?? session.issued_count}/${q?.capacity ?? session.capacity}`}
             />
           </div>
           {stats.data && (stats.data.avg_consult_minutes || stats.data.avg_wait_minutes) && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Average consultation {stats.data.avg_consult_minutes ?? '–'} min · average wait after
-              check-in {stats.data.avg_wait_minutes ?? '–'} min
+              {t('averages', {
+                consult: stats.data.avg_consult_minutes ?? '–',
+                wait: stats.data.avg_wait_minutes ?? '–',
+              })}
             </p>
           )}
           {status === 'OPEN' && (
@@ -327,34 +475,30 @@ function SessionConsole({
               onClick={() => next.mutate()}
               disabled={busy || !qsId}
             >
-              <BellRing className="size-5" /> Call next patient
+              <BellRing className="size-5" /> {t('callNext')}
             </Button>
           )}
           {status === 'SCHEDULED' && (
             <p className="mt-4 text-sm text-muted-foreground">
-              Patients can be checked in now. Calling starts once{' '}
-              {canManage ? 'you start' : 'the doctor or an administrator starts'} the OPD.
+              {canManage ? t('scheduledSelf') : t('scheduledOther')}
             </p>
           )}
         </CardContent>
       </Card>
 
       {!qsId ? (
-        <EmptyState
-          title="No tokens yet"
-          description="Tokens appear here as patients book or walk in."
-        />
+        <EmptyState title={t('noTokensTitle')} description={t('noTokensBody')} />
       ) : appointments.isPending ? (
-        <PageSpinner label="Loading tokens" />
+        <PageSpinner label={t('loadingTokens')} />
       ) : appointments.isError ? (
         <ErrorState error={appointments.error} onRetry={() => appointments.refetch()} />
       ) : (
         grouped.map((g) =>
           g.rows.length === 0 ? null : (
-            <section key={g.title} aria-label={g.title}>
+            <section key={g.title} aria-label={t(g.title)}>
               <details open={!g.collapsed} className="group">
                 <summary className="mb-2 cursor-pointer text-sm font-semibold text-muted-foreground">
-                  {g.title} ({g.rows.length})
+                  {t(g.title)} ({g.rows.length})
                 </summary>
                 <div className="overflow-hidden rounded-lg border">
                   {g.rows.map((a) => (
@@ -375,7 +519,7 @@ function SessionConsole({
                             {a.patient_age != null && (
                               <span className="font-normal text-muted-foreground">
                                 {' '}
-                                · {a.patient_age} y
+                                · {t('age', { age: a.patient_age })}
                               </span>
                             )}
                           </p>
@@ -383,9 +527,9 @@ function SessionConsole({
                             <a href={`tel:${a.patient_phone}`} className="hover:underline">
                               {a.patient_phone}
                             </a>{' '}
-                            · {a.source === 'WALK_IN' ? 'Walk-in' : 'Online'} ·{' '}
+                            · {c(a.source === 'WALK_IN' ? 'source.WALK_IN' : 'source.ONLINE')} ·{' '}
                             {a.booking_reference}
-                            {a.skip_count > 0 && ` · skipped ${a.skip_count}×`}
+                            {a.skip_count > 0 && ` · ${t('skippedTimes', { count: a.skip_count })}`}
                           </p>
                         </div>
                       </div>
@@ -413,7 +557,7 @@ function SessionConsole({
                                   : action.mutate({ appt: a, action: act })
                               }
                             >
-                              {ACTIONS[act].label}
+                              {c(`action.${act}`)}
                             </Button>
                           ))}
                       </div>
@@ -429,14 +573,11 @@ function SessionConsole({
       <Dialog open={!!cancelTarget} onOpenChange={(o) => !o && setCancelTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancel token {cancelTarget?.token_no}?</DialogTitle>
+            <DialogTitle>{t('cancelTitle', { token: cancelTarget?.token_no })}</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            The patient will see this reason. If they paid online, a refund request is recorded for
-            an administrator to process.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('cancelBody')}</p>
           <div className="space-y-1.5">
-            <Label htmlFor="cancel-reason">Reason</Label>
+            <Label htmlFor="cancel-reason">{t('reason')}</Label>
             <Textarea
               id="cancel-reason"
               value={cancelReason}
@@ -446,7 +587,7 @@ function SessionConsole({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCancelTarget(null)}>
-              Keep token
+              {t('keepToken')}
             </Button>
             <Button
               variant="destructive"
@@ -461,7 +602,7 @@ function SessionConsole({
                 setCancelReason('')
               }}
             >
-              Cancel token
+              {c('action.CANCEL')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -470,14 +611,12 @@ function SessionConsole({
       <Dialog open={delayOpen} onOpenChange={setDelayOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delay and public note</DialogTitle>
+            <DialogTitle>{t('delayTitle')}</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Shown to patients on the tracking page and the waiting-room display. No patient details.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('delayBody')}</p>
           <div className="grid gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="delay-min">Delay (minutes, 0 to clear)</Label>
+              <Label htmlFor="delay-min">{t('delayMinutes')}</Label>
               <Input
                 id="delay-min"
                 type="number"
@@ -488,13 +627,13 @@ function SessionConsole({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="delay-note">Note</Label>
+              <Label htmlFor="delay-note">{t('note')}</Label>
               <Input
                 id="delay-note"
                 maxLength={200}
                 value={delay.note}
                 onChange={(e) => setDelay({ ...delay, note: e.target.value })}
-                placeholder="e.g. Doctor attending an emergency"
+                placeholder={t('notePlaceholder')}
               />
             </div>
           </div>
@@ -509,7 +648,7 @@ function SessionConsole({
                 setDelayOpen(false)
               }}
             >
-              Save
+              {c('save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -518,19 +657,18 @@ function SessionConsole({
       <AlertDialog open={!!confirmClose} onOpenChange={(o) => !o && setConfirmClose(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>End OPD with patients still waiting?</AlertDialogTitle>
+            <AlertDialogTitle>{t('closeTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmClose} Checked-in patients who were not seen will be cancelled (refund
-              requested if they paid). Patients who never arrived are marked no-show.
+              {confirmClose} {t('closeBody')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep OPD open</AlertDialogCancel>
+            <AlertDialogCancel>{t('keepOpen')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={() => control.mutate({ action: 'CLOSE', force: true })}
             >
-              End OPD anyway
+              {t('endAnyway')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

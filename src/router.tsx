@@ -3,6 +3,8 @@ import { createBrowserRouter, Link, useRouteError } from 'react-router'
 import { RequireStaff } from '@/auth/RequireStaff'
 import { PublicLayout } from '@/components/layout/PublicLayout'
 import { Button } from '@/components/ui/button'
+import { useT } from '@/i18n'
+import { common } from '@/i18n/common'
 import { HomePage } from '@/pages/public/HomePage'
 
 // Only the home page is in the entry chunk; every other page is loaded on demand so the first
@@ -17,18 +19,17 @@ const named =
 function RouteError() {
   const error = useRouteError() as { status?: number; statusText?: string } | Error
   const notFound = 'status' in error && error.status === 404
+  const t = useT(common)
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-24 text-center">
       <h1 className="text-2xl font-semibold">
-        {notFound ? 'Page not found' : 'Something went wrong'}
+        {notFound ? t('pageNotFound') : t('somethingWrong')}
       </h1>
       <p className="text-muted-foreground">
-        {notFound
-          ? 'The page you are looking for does not exist.'
-          : 'Please reload the page. If the problem continues, contact the hospital.'}
+        {notFound ? t('pageNotFoundBody') : t('pageErrorBody')}
       </p>
       <Button asChild>
-        <Link to="/">Go to home page</Link>
+        <Link to="/">{t('goHome')}</Link>
       </Button>
     </div>
   )
@@ -118,6 +119,7 @@ export const router = createBrowserRouter([
       { path: 'announcements', lazy: page(() => import('@/pages/admin/AnnouncementsPage')) },
       { path: 'staff', lazy: page(() => import('@/pages/admin/StaffPage')) },
       { path: 'payments', lazy: page(() => import('@/pages/admin/PaymentsPage')) },
+      { path: 'reports', lazy: page(() => import('@/pages/admin/ReportsPage')) },
       { path: 'audit', lazy: page(() => import('@/pages/admin/AuditPage')) },
       { path: 'settings', lazy: page(() => import('@/pages/admin/SettingsPage')) },
     ],

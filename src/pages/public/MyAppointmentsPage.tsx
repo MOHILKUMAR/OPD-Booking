@@ -8,10 +8,49 @@ import { AppointmentStatusBadge } from '@/components/badges'
 import { CardSkeletons, EmptyState, ErrorState, PageHeader } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { defineMessages, useT } from '@/i18n'
 import { errorMessage } from '@/lib/errors'
 import { formatDate, formatTimeRange } from '@/lib/format'
 
+const messages = defineMessages({
+  en: {
+    linkCopied: 'New tracking link copied. Older links for this booking no longer work.',
+    title: 'My bookings',
+    deviceDescription:
+      'Bookings made on this phone. Clearing browser data removes this list — keep your tracking links.',
+    accountDescription: 'Bookings linked to your account.',
+    empty: 'No bookings on this device',
+    emptyBody: 'Booked on another phone? Open the tracking link you saved.',
+    bookToken: 'Book a token',
+    token: 'Token',
+    track: 'Track',
+    newLinkTitle: 'Create a new private link to open this booking on another phone',
+    newLink: 'New link',
+    saveBefore: 'Want your bookings on another device?',
+    saveLink: 'Save them to an account',
+    saveAfter: '.',
+  },
+  hi: {
+    linkCopied: 'नया ट्रैकिंग लिंक कॉपी हो गया। इस बुकिंग के पुराने लिंक अब काम नहीं करेंगे।',
+    title: 'मेरी बुकिंग',
+    deviceDescription:
+      'इस फ़ोन से की गई बुकिंग। ब्राउज़र डेटा मिटाने पर यह सूची हट जाती है — अपने ट्रैकिंग लिंक संभालकर रखें।',
+    accountDescription: 'आपके खाते से जुड़ी बुकिंग।',
+    empty: 'इस डिवाइस पर कोई बुकिंग नहीं',
+    emptyBody: 'किसी दूसरे फ़ोन से बुक किया था? सहेजा हुआ ट्रैकिंग लिंक खोलें।',
+    bookToken: 'टोकन बुक करें',
+    token: 'टोकन',
+    track: 'ट्रैक करें',
+    newLinkTitle: 'दूसरे फ़ोन पर यह बुकिंग खोलने के लिए नया निजी लिंक बनाएँ',
+    newLink: 'नया लिंक',
+    saveBefore: 'अपनी बुकिंग दूसरे डिवाइस पर भी देखना चाहते हैं?',
+    saveLink: 'उन्हें खाते में सहेजें',
+    saveAfter: '।',
+  },
+})
+
 export function MyAppointmentsPage() {
+  const t = useT(messages)
   const auth = useAuth()
   const list = useQuery({
     queryKey: ['my-appointments', auth.userId],
@@ -25,19 +64,16 @@ export function MyAppointmentsPage() {
       await navigator.clipboard?.writeText(url).catch(() => {})
       return url
     },
-    onSuccess: () =>
-      toast.success('New tracking link copied. Older links for this booking no longer work.'),
+    onSuccess: () => toast.success(t('linkCopied')),
     onError: (e) => toast.error(errorMessage(e)),
   })
 
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
-        title="My bookings"
+        title={t('title')}
         description={
-          auth.isAnonymous || !auth.session
-            ? 'Bookings made on this phone. Clearing browser data removes this list — keep your tracking links.'
-            : 'Bookings linked to your account.'
+          auth.isAnonymous || !auth.session ? t('deviceDescription') : t('accountDescription')
         }
       />
       {list.isPending ? (
@@ -46,11 +82,11 @@ export function MyAppointmentsPage() {
         <ErrorState error={list.error} onRetry={() => list.refetch()} />
       ) : !list.data?.length ? (
         <EmptyState
-          title="No bookings on this device"
-          description="Booked on another phone? Open the tracking link you saved."
+          title={t('empty')}
+          description={t('emptyBody')}
           action={
             <Button asChild>
-              <Link to="/doctors?available=1">Book a token</Link>
+              <Link to="/doctors?available=1">{t('bookToken')}</Link>
             </Button>
           }
         />
@@ -61,7 +97,9 @@ export function MyAppointmentsPage() {
               <CardContent className="flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                   <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-xl bg-accent">
-                    <span className="text-[10px] uppercase text-muted-foreground">Token</span>
+                    <span className="text-[10px] uppercase text-muted-foreground">
+                      {t('token')}
+                    </span>
                     <span className="text-xl font-bold tabular">{b.token_no ?? '–'}</span>
                   </div>
                   <div>
@@ -80,16 +118,16 @@ export function MyAppointmentsPage() {
                 </div>
                 <div className="flex gap-2">
                   <Button asChild size="sm">
-                    <Link to={`/track/${b.booking_reference}`}>Track</Link>
+                    <Link to={`/track/${b.booking_reference}`}>{t('track')}</Link>
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={rotate.isPending}
                     onClick={() => rotate.mutate(b.booking_reference)}
-                    title="Create a new private link to open this booking on another phone"
+                    title={t('newLinkTitle')}
                   >
-                    <Link2 /> New link
+                    <Link2 /> {t('newLink')}
                   </Button>
                 </div>
               </CardContent>
@@ -98,11 +136,11 @@ export function MyAppointmentsPage() {
         </div>
       )}
       <p className="mt-6 text-sm text-muted-foreground">
-        Want your bookings on another device?{' '}
+        {t('saveBefore')}{' '}
         <Link to="/account" className="text-primary underline">
-          Save them to an account
+          {t('saveLink')}
         </Link>
-        .
+        {t('saveAfter')}
       </p>
     </div>
   )

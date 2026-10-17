@@ -1,5 +1,7 @@
 // Turns PostgREST / Edge Function errors into something the UI can show.
 // Database business errors carry a stable code in `message` and patient-safe text in `hint`.
+// In Hindi the code picks a translated message (src/i18n/server-text.ts).
+import { errorTextFor } from '@/i18n/server-text'
 
 export class AppError extends Error {
   readonly code: string
@@ -37,14 +39,21 @@ export function toAppError(err: unknown): AppError {
   if (/^(MQ_[A-Z_]+|PAYMENTS_DISABLED|ORDER_IN_PROGRESS|INVALID_SIGNATURE)$/.test(message)) {
     return new AppError(
       message,
-      e.hint || FALLBACK[message] || 'The request could not be completed.',
+      errorTextFor(message, e.details ?? undefined) ||
+        e.hint ||
+        FALLBACK[message] ||
+        'The request could not be completed.',
       e.details ?? undefined,
     )
   }
-  if (e.code === '42501') return new AppError('MQ_FORBIDDEN', FALLBACK.MQ_FORBIDDEN!)
+  if (e.code === '42501')
+    return new AppError('MQ_FORBIDDEN', errorTextFor('MQ_FORBIDDEN') ?? FALLBACK.MQ_FORBIDDEN!)
   if (err instanceof TypeError || /fetch|network/i.test(message))
-    return new AppError('NETWORK', FALLBACK.NETWORK!)
-  return new AppError('UNKNOWN', 'Something went wrong. Please try again.')
+    return new AppError('NETWORK', errorTextFor('NETWORK') ?? FALLBACK.NETWORK!)
+  return new AppError(
+    'UNKNOWN',
+    errorTextFor('UNKNOWN') ?? 'Something went wrong. Please try again.',
+  )
 }
 
 /** Throws AppError when a supabase-js result has an error, otherwise returns data. */

@@ -1,6 +1,7 @@
 // Calls to Supabase Edge Functions (payments, staff provisioning). supabase-js attaches the
 // signed-in user's JWT; the functions verify it server-side.
 import { FunctionsHttpError } from '@supabase/supabase-js'
+import { errorTextFor } from '@/i18n/server-text'
 import { AppError, toAppError } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
 
@@ -12,9 +13,10 @@ export async function invokeFunction<T>(name: string, body: Record<string, unkno
         code?: string
         message?: string
       } | null
+      const code = payload?.code ?? 'UNKNOWN'
       throw new AppError(
-        payload?.code ?? 'UNKNOWN',
-        payload?.message ?? 'The request could not be completed.',
+        code,
+        errorTextFor(code) ?? payload?.message ?? 'The request could not be completed.',
       )
     }
     throw toAppError(error)

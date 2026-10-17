@@ -324,3 +324,41 @@ export async function fetchAuditLogs(
   if (error) unwrap({ data, error })
   return { rows: (data ?? []) as AuditLog[], total: count ?? 0 }
 }
+
+// --- reports ----------------------------------------------------------------
+export type ReportKind = 'appointments' | 'daily_summary' | 'payments' | 'refunds' | 'audit'
+
+const EXPORT_PAGE = 2000
+const EXPORT_MAX_ROWS = 200_000
+
+/**
+ * Fetches every row of a report, page by page (admin_export checks the admin role and records
+ * the export in the audit log). `onProgress` gets the running row count. Stops at 200,000 rows
+ * (`truncated`): the caller asks for a shorter date range.
+ */
+export async function fetchReportRows(
+  hospitalId: string,
+  kind: ReportKind,
+  from: string,
+  to: string,
+  opts: { includePatient?: boolean; onProgress?: (rows: number) => void } = {},
+): Promise<{ rows: Record<string, unknown>[]; truncated: boolean }> {
+  const rows: Record<string, unknown>[] = []
+  for (let offset = 0; ; offset += EXPORT_PAGE) {
+    const page = unwrap(
+      await supabase.rpc('admin_export', {
+        p_hospital_id: hospitalId,
+        p_kind: kind,
+        p_from: from,
+        p_to: to,
+        p_include_patient: !!opts.includePatient,
+        p_offset: offset,
+        p_limit: EXPORT_PAGE,
+      }),
+    ) as { rows: Record<string, unknown>[]; has_more: boolean }
+    rows.push(...page.rows)
+    opts.onProgress?.(rows.length)
+    if (!page.has_more) return { rows, truncated: false }
+    if (rows.length >= EXPORT_MAX_ROWS) return { rows, truncated: true }
+  }
+}

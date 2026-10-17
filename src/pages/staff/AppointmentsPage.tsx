@@ -16,12 +16,49 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useDebounced, useToday } from '@/hooks/useHospital'
+import { defineMessages, useT } from '@/i18n'
+import { common } from '@/i18n/common'
 import { formatDate } from '@/lib/format'
+
+const messages = defineMessages({
+  en: {
+    title: 'Appointments',
+    description:
+      'Search by booking reference, mobile number or name. Results are limited to doctors you work with.',
+    search: 'Search',
+    searchPlaceholder: 'MQ-… / 98765… / name',
+    date: 'Date',
+    anyDate: 'Any date',
+    noResults: 'No appointments found',
+    token: 'Token',
+    patient: 'Patient',
+    doctor: 'Doctor',
+    status: 'Status',
+    reference: 'Reference',
+  },
+  hi: {
+    title: 'अपॉइंटमेंट',
+    description:
+      'बुकिंग नंबर, मोबाइल नंबर या नाम से खोजें। केवल उन डॉक्टरों के नतीजे दिखते हैं जिनके साथ आप काम करते हैं।',
+    search: 'खोजें',
+    searchPlaceholder: 'MQ-… / 98765… / नाम',
+    date: 'तारीख़',
+    anyDate: 'कोई भी तारीख़',
+    noResults: 'कोई अपॉइंटमेंट नहीं मिला',
+    token: 'टोकन',
+    patient: 'मरीज़',
+    doctor: 'डॉक्टर',
+    status: 'स्थिति',
+    reference: 'बुकिंग नंबर',
+  },
+})
 
 const PAGE = 25
 
 export default function AppointmentsPage() {
   const today = useToday()
+  const t = useT(messages)
+  const c = useT(common)
   const [date, setDate] = useState(today)
   const [text, setText] = useState('')
   const [page, setPage] = useState(0)
@@ -37,13 +74,10 @@ export default function AppointmentsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Appointments"
-        description="Search by booking reference, mobile number or name. Results are limited to doctors you work with."
-      />
+      <PageHeader title={t('title')} description={t('description')} />
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1 space-y-1.5">
-          <Label htmlFor="appt-search">Search</Label>
+          <Label htmlFor="appt-search">{t('search')}</Label>
           <div className="relative">
             <Search
               className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground"
@@ -57,12 +91,12 @@ export default function AppointmentsPage() {
                 setText(e.target.value)
                 setPage(0)
               }}
-              placeholder="MQ-… / 98765… / name"
+              placeholder={t('searchPlaceholder')}
             />
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="appt-date">Date</Label>
+          <Label htmlFor="appt-date">{t('date')}</Label>
           <Input
             id="appt-date"
             type="date"
@@ -74,7 +108,7 @@ export default function AppointmentsPage() {
           />
         </div>
         <Button variant="outline" onClick={() => setDate('')} disabled={!date}>
-          Any date
+          {t('anyDate')}
         </Button>
       </div>
 
@@ -83,19 +117,19 @@ export default function AppointmentsPage() {
       ) : result.isError ? (
         <ErrorState error={result.error} onRetry={() => result.refetch()} />
       ) : result.data.rows.length === 0 ? (
-        <EmptyState title="No appointments found" />
+        <EmptyState title={t('noResults')} />
       ) : (
         <>
           <div className="overflow-x-auto rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Token</TableHead>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Doctor</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Reference</TableHead>
+                  <TableHead>{t('token')}</TableHead>
+                  <TableHead>{t('patient')}</TableHead>
+                  <TableHead>{t('doctor')}</TableHead>
+                  <TableHead>{t('date')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead>{t('reference')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -129,7 +163,7 @@ export default function AppointmentsPage() {
                 disabled={page === 0}
                 onClick={() => setPage(page - 1)}
               >
-                <ChevronLeft /> Previous
+                <ChevronLeft /> {c('previous')}
               </Button>
               <span className="text-sm tabular">
                 {page + 1} / {pages}
@@ -140,7 +174,7 @@ export default function AppointmentsPage() {
                 disabled={page + 1 >= pages}
                 onClick={() => setPage(page + 1)}
               >
-                Next <ChevronRight />
+                {c('next')} <ChevronRight />
               </Button>
             </div>
           )}

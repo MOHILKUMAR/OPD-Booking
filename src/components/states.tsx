@@ -3,17 +3,20 @@ import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { LiveStatus } from '@/hooks/useLiveQueue'
+import { localeFor, useT } from '@/i18n'
+import { common } from '@/i18n/common'
 import { errorMessage } from '@/lib/errors'
 import { cn } from '@/lib/utils'
 
-export function PageSpinner({ label = 'Loading' }: { label?: string }) {
+export function PageSpinner({ label }: { label?: string }) {
+  const t = useT(common)
   return (
     <div
       className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground"
       role="status"
     >
       <Loader2 className="size-5 animate-spin" aria-hidden />
-      <span>{label}…</span>
+      <span>{label ?? t('loading')}…</span>
     </div>
   )
 }
@@ -31,12 +34,13 @@ export function CardSkeletons({ count = 3, className }: { count?: number; classN
 export function ErrorState({
   error,
   onRetry,
-  title = 'Something went wrong',
+  title,
 }: {
   error: unknown
   onRetry?: () => void
   title?: string
 }) {
+  const t = useT(common)
   return (
     <div
       role="alert"
@@ -44,12 +48,12 @@ export function ErrorState({
     >
       <AlertTriangle className="size-8 text-destructive" aria-hidden />
       <div>
-        <p className="font-medium">{title}</p>
+        <p className="font-medium">{title ?? t('somethingWrong')}</p>
         <p className="text-sm text-muted-foreground">{errorMessage(error)}</p>
       </div>
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry}>
-          <RefreshCw /> Try again
+          <RefreshCw /> {t('tryAgain')}
         </Button>
       )}
     </div>
@@ -88,8 +92,8 @@ export function LiveIndicator({
   updatedAt?: number
   className?: string
 }) {
-  const label =
-    status === 'live' ? 'Live' : status === 'connecting' ? 'Connecting' : 'Auto-refresh every 15 s'
+  const t = useT(common)
+  const label = t(status === 'live' ? 'live' : status === 'connecting' ? 'connecting' : 'polling')
   return (
     <span
       className={cn('inline-flex items-center gap-1.5 text-xs text-muted-foreground', className)}
@@ -106,11 +110,13 @@ export function LiveIndicator({
       {label}
       {updatedAt ? (
         <span className="tabular">
-          · updated{' '}
-          {new Date(updatedAt).toLocaleTimeString('en-IN', {
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit',
+          ·{' '}
+          {t('updatedAt', {
+            time: new Date(updatedAt).toLocaleTimeString(localeFor(), {
+              hour: 'numeric',
+              minute: '2-digit',
+              second: '2-digit',
+            }),
           })}
         </span>
       ) : null}

@@ -15,10 +15,47 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useHospital } from '@/hooks/useHospital'
+import { defineMessages, useT } from '@/i18n'
 import { formatMoney } from '@/lib/format'
+
+const messages = defineMessages({
+  en: {
+    title: 'Doctors & shifts',
+    description: 'Profiles, OPD shifts, weekly schedules, capacity and fees.',
+    addDoctor: 'Add doctor',
+    emptyTitle: 'No doctors yet',
+    emptyBody: 'Add departments first, then doctors.',
+    doctor: 'Doctor',
+    department: 'Department',
+    room: 'Room',
+    fee: 'Consultation fee',
+    status: 'Status',
+    active: 'Active',
+    inactive: 'Inactive',
+    notAccepting: 'Not accepting',
+    edit: 'Edit',
+  },
+  hi: {
+    title: 'डॉक्टर और शिफ़्ट',
+    description: 'प्रोफ़ाइल, ओपीडी शिफ़्ट, साप्ताहिक समय-सारणी, क्षमता और शुल्क।',
+    addDoctor: 'डॉक्टर जोड़ें',
+    emptyTitle: 'अभी कोई डॉक्टर नहीं',
+    emptyBody: 'पहले विभाग जोड़ें, फिर डॉक्टर।',
+    doctor: 'डॉक्टर',
+    department: 'विभाग',
+    room: 'कक्ष',
+    fee: 'परामर्श शुल्क',
+    status: 'स्थिति',
+    active: 'सक्रिय',
+    inactive: 'निष्क्रिय',
+    notAccepting: 'बुकिंग नहीं ले रहे',
+    edit: 'बदलें',
+  },
+})
 
 export default function DoctorsAdminPage() {
   const { data: hospital } = useHospital()
+  const t = useT(messages)
   const doctors = useQuery({
     queryKey: ['admin-doctors', hospital?.id],
     queryFn: () => fetchAllDoctors(hospital!.id),
@@ -28,12 +65,12 @@ export default function DoctorsAdminPage() {
   return (
     <div>
       <PageHeader
-        title="Doctors & shifts"
-        description="Profiles, OPD shifts, weekly schedules, capacity and fees."
+        title={t('title')}
+        description={t('description')}
         actions={
           <Button asChild>
             <Link to="/admin/doctors/new">
-              <Plus /> Add doctor
+              <Plus /> {t('addDoctor')}
             </Link>
           </Button>
         }
@@ -43,17 +80,17 @@ export default function DoctorsAdminPage() {
       ) : doctors.isError ? (
         <ErrorState error={doctors.error} onRetry={() => doctors.refetch()} />
       ) : doctors.data.length === 0 ? (
-        <EmptyState title="No doctors yet" description="Add departments first, then doctors." />
+        <EmptyState title={t('emptyTitle')} description={t('emptyBody')} />
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Doctor</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Room</TableHead>
-                <TableHead>Consultation fee</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('doctor')}</TableHead>
+                <TableHead>{t('department')}</TableHead>
+                <TableHead>{t('room')}</TableHead>
+                <TableHead>{t('fee')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -80,17 +117,17 @@ export default function DoctorsAdminPage() {
                   </TableCell>
                   <TableCell className="space-x-1">
                     {d.is_active ? (
-                      <ToneBadge color="green">Active</ToneBadge>
+                      <ToneBadge color="green">{t('active')}</ToneBadge>
                     ) : (
-                      <ToneBadge color="grey">Inactive</ToneBadge>
+                      <ToneBadge color="grey">{t('inactive')}</ToneBadge>
                     )}
                     {d.is_active && !d.accepting_bookings && (
-                      <ToneBadge color="amber">Not accepting</ToneBadge>
+                      <ToneBadge color="amber">{t('notAccepting')}</ToneBadge>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button asChild size="sm" variant="outline">
-                      <Link to={`/admin/doctors/${d.id}`}>Edit</Link>
+                      <Link to={`/admin/doctors/${d.id}`}>{t('edit')}</Link>
                     </Button>
                   </TableCell>
                 </TableRow>

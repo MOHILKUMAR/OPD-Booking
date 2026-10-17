@@ -1,10 +1,13 @@
+import { common } from '@/i18n/common'
+import { currentLang, localeFor, tr } from '@/i18n'
+
 const IST = 'Asia/Kolkata'
 
 /** '2026-10-16' -> 'Fri, 16 Oct 2026' (calendar date, no timezone shift). */
 export function formatDate(isoDate: string, opts: Intl.DateTimeFormatOptions = {}): string {
   const [y, m, d] = isoDate.split('-').map(Number)
   const date = new Date(Date.UTC(y!, m! - 1, d!))
-  return new Intl.DateTimeFormat('en-IN', {
+  return new Intl.DateTimeFormat(localeFor(), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -14,10 +17,17 @@ export function formatDate(isoDate: string, opts: Intl.DateTimeFormatOptions = {
   }).format(date)
 }
 
-/** '09:30:00' -> '9:30 AM' */
+/** '09:30:00' -> '9:30 AM' (Hindi: '9:30 am' style from Intl) */
 export function formatTime(time: string | null | undefined): string {
   if (!time) return ''
   const [h, m] = time.split(':').map(Number)
+  if (currentLang() !== 'en') {
+    return new Intl.DateTimeFormat(localeFor(), {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: 'UTC',
+    }).format(new Date(Date.UTC(2000, 0, 1, h!, m!)))
+  }
   const suffix = h! >= 12 ? 'PM' : 'AM'
   const hour = h! % 12 === 0 ? 12 : h! % 12
   return `${hour}:${String(m).padStart(2, '0')} ${suffix}`
@@ -28,7 +38,7 @@ export function formatTimeRange(start: string, end: string): string {
 }
 
 export function formatMoney(paise: number): string {
-  return new Intl.NumberFormat('en-IN', {
+  return new Intl.NumberFormat(localeFor(), {
     style: 'currency',
     currency: 'INR',
     maximumFractionDigits: paise % 100 === 0 ? 0 : 2,
@@ -36,7 +46,7 @@ export function formatMoney(paise: number): string {
 }
 
 export function formatDateTime(iso: string): string {
-  return new Intl.DateTimeFormat('en-IN', {
+  return new Intl.DateTimeFormat(localeFor(), {
     day: 'numeric',
     month: 'short',
     hour: 'numeric',
@@ -46,7 +56,7 @@ export function formatDateTime(iso: string): string {
 }
 
 export function formatClock(date: Date): string {
-  return new Intl.DateTimeFormat('en-IN', {
+  return new Intl.DateTimeFormat(localeFor(), {
     hour: 'numeric',
     minute: '2-digit',
     second: '2-digit',
@@ -71,8 +81,8 @@ export function addDays(isoDate: string, days: number): string {
 }
 
 export function relativeDayLabel(isoDate: string, today = todayInIST()): string {
-  if (isoDate === today) return 'Today'
-  if (isoDate === addDays(today, 1)) return 'Tomorrow'
+  if (isoDate === today) return tr(common, 'today')
+  if (isoDate === addDays(today, 1)) return tr(common, 'tomorrow')
   return formatDate(isoDate, { year: undefined })
 }
 

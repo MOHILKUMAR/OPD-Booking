@@ -2,7 +2,31 @@
 // TOTP is free on every Supabase plan. Signing in with a password gives an `aal1` session; a
 // verified code upgrades it to `aal2`.
 import type { Factor } from '@supabase/supabase-js'
+import { defineMessages, tr } from '@/i18n'
 import { supabase } from '@/lib/supabase'
+
+const messages = defineMessages({
+  en: {
+    noFactor: 'No authenticator app is set up for this account.',
+    wrongCode:
+      'That code is not correct. Make sure the time on your phone is set automatically, then enter the current code.',
+    expired: 'The code expired. Enter the current code from your app.',
+    notEnabled:
+      'Authenticator apps are turned off for this project (Supabase Auth → Multi-Factor).',
+    insufficientAal: 'Sign out and sign in again with your authenticator code to make this change.',
+    unknown: 'Something went wrong. Please try again.',
+  },
+  hi: {
+    noFactor: 'इस खाते के लिए कोई ऑथेंटिकेटर ऐप सेट नहीं है।',
+    wrongCode:
+      'यह कोड सही नहीं है। पक्का करें कि आपके फ़ोन का समय अपने-आप सेट होता है, फिर ऐप में अभी दिख रहा कोड लिखें।',
+    expired: 'कोड का समय ख़त्म हो गया। ऐप में अभी दिख रहा कोड लिखें।',
+    notEnabled: 'इस प्रोजेक्ट के लिए ऑथेंटिकेटर ऐप बंद हैं (Supabase Auth → Multi-Factor)।',
+    insufficientAal:
+      'यह बदलाव करने के लिए साइन आउट करें और ऑथेंटिकेटर कोड के साथ फिर से साइन इन करें।',
+    unknown: 'कुछ गड़बड़ हो गई। कृपया फिर कोशिश करें।',
+  },
+})
 
 export async function listTotpFactors(): Promise<Factor[]> {
   const { data, error } = await supabase.auth.mfa.listFactors()
@@ -39,7 +63,7 @@ export async function verifyTotp(factorId: string, code: string): Promise<void> 
 /** Sign-in second step: verifies the code against the account's authenticator app. */
 export async function verifySignInCode(code: string): Promise<void> {
   const factor = (await listTotpFactors()).find((f) => f.status === 'verified')
-  if (!factor) throw new Error('No authenticator app is set up for this account.')
+  if (!factor) throw new Error(tr(messages, 'noFactor'))
   await verifyTotp(factor.id, code)
 }
 
@@ -64,14 +88,14 @@ export function mfaErrorMessage(err: unknown): string {
   const e = (err ?? {}) as { code?: string; message?: string }
   switch (e.code) {
     case 'mfa_verification_failed':
-      return 'That code is not correct. Make sure the time on your phone is set automatically, then enter the current code.'
+      return tr(messages, 'wrongCode')
     case 'mfa_challenge_expired':
-      return 'The code expired. Enter the current code from your app.'
+      return tr(messages, 'expired')
     case 'mfa_totp_enroll_not_enabled':
     case 'mfa_totp_verify_not_enabled':
-      return 'Authenticator apps are turned off for this project (Supabase Auth → Multi-Factor).'
+      return tr(messages, 'notEnabled')
     case 'insufficient_aal':
-      return 'Sign out and sign in again with your authenticator code to make this change.'
+      return tr(messages, 'insufficientAal')
   }
-  return e.message || 'Something went wrong. Please try again.'
+  return e.message || tr(messages, 'unknown')
 }

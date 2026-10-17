@@ -4,9 +4,34 @@ import { SessionStatusBadge, ToneBadge } from '@/components/badges'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { defineMessages, useT } from '@/i18n'
+import { sessionUnavailableText } from '@/i18n/server-text'
 import { formatMoney, formatTimeRange, initials } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { SessionRow } from '@/types/database'
+
+const messages = defineMessages({
+  en: {
+    nowServing: 'Now serving',
+    waiting: 'Waiting',
+    onlineLeft: 'Online left',
+    tokensBooked: 'Tokens booked',
+    issued: '{issued} of {capacity} tokens issued',
+    bookingFee: 'booking fee {fee}',
+    runningLate: 'Running about {minutes} min late',
+    bookToken: 'Book token',
+  },
+  hi: {
+    nowServing: 'अभी का टोकन',
+    waiting: 'प्रतीक्षा में',
+    onlineLeft: 'ऑनलाइन बाकी',
+    tokensBooked: 'बुक हुए टोकन',
+    issued: '{capacity} में से {issued} टोकन जारी',
+    bookingFee: 'बुकिंग शुल्क {fee}',
+    runningLate: 'लगभग {minutes} मिनट की देरी',
+    bookToken: 'टोकन बुक करें',
+  },
+})
 
 export function DoctorAvatar({
   name,
@@ -39,6 +64,7 @@ export function SessionSummary({
   doctorId: string
   compact?: boolean
 }) {
+  const t = useT(messages)
   const used =
     session.online_capacity > 0
       ? Math.min(100, (session.issued_count / session.capacity) * 100)
@@ -60,35 +86,35 @@ export function SessionSummary({
         <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
           <Stat
             icon={<Ticket className="size-3.5" />}
-            label="Now serving"
+            label={t('nowServing')}
             value={session.current_token_no ?? '–'}
           />
           <Stat
             icon={<Users className="size-3.5" />}
-            label="Waiting"
+            label={t('waiting')}
             value={session.waiting_count}
           />
           <Stat
             icon={<CalendarClock className="size-3.5" />}
-            label="Online left"
+            label={t('onlineLeft')}
             value={session.remaining_online}
           />
         </div>
       )}
 
       <div className="mt-3">
-        <Progress value={used} aria-label="Tokens booked" className="h-1.5" />
+        <Progress value={used} aria-label={t('tokensBooked')} className="h-1.5" />
         <p className="mt-1 text-xs text-muted-foreground tabular">
-          {session.issued_count} of {session.capacity} tokens issued
+          {t('issued', { issued: session.issued_count, capacity: session.capacity })}
           {session.booking_fee_paise > 0 && (
-            <> · booking fee {formatMoney(session.booking_fee_paise)}</>
+            <> · {t('bookingFee', { fee: formatMoney(session.booking_fee_paise) })}</>
           )}
         </p>
       </div>
 
       {session.delay_minutes > 0 && (
         <ToneBadge color="amber" className="mt-2">
-          Running about {session.delay_minutes} min late
+          {t('runningLate', { minutes: session.delay_minutes })}
         </ToneBadge>
       )}
       {session.public_note && (
@@ -99,11 +125,13 @@ export function SessionSummary({
         {session.bookable ? (
           <Button asChild size={compact ? 'sm' : 'default'} className="w-full sm:w-auto">
             <Link to={`/book/${doctorId}?shift=${session.shift_id}&date=${session.session_date}`}>
-              Book token
+              {t('bookToken')}
             </Link>
           </Button>
         ) : (
-          <p className="text-sm text-muted-foreground">{session.unavailable_message}</p>
+          <p className="text-sm text-muted-foreground">
+            {sessionUnavailableText(session.unavailable_reason, session.unavailable_message)}
+          </p>
         )}
       </div>
     </div>

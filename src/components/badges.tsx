@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge'
-import { STATUS_LABEL } from '@/lib/queue-transitions'
+import { useT } from '@/i18n'
+import { common } from '@/i18n/common'
 import { cn } from '@/lib/utils'
 import type { AppointmentStatus, SessionStatus } from '@/types/database'
 
@@ -12,12 +13,12 @@ const tone = {
   grey: 'border-transparent bg-muted text-muted-foreground',
 } as const
 
-const SESSION: Record<SessionStatus, { label: string; tone: keyof typeof tone }> = {
-  SCHEDULED: { label: 'Not started', tone: 'grey' },
-  OPEN: { label: 'OPD running', tone: 'green' },
-  PAUSED: { label: 'Paused', tone: 'amber' },
-  CLOSED: { label: 'Closed', tone: 'grey' },
-  CANCELLED: { label: 'Cancelled', tone: 'red' },
+const SESSION_TONE: Record<SessionStatus, keyof typeof tone> = {
+  SCHEDULED: 'grey',
+  OPEN: 'green',
+  PAUSED: 'amber',
+  CLOSED: 'grey',
+  CANCELLED: 'red',
 }
 
 export function SessionStatusBadge({
@@ -27,8 +28,10 @@ export function SessionStatusBadge({
   status: SessionStatus
   className?: string
 }) {
-  const s = SESSION[status]
-  return <Badge className={cn(tone[s.tone], className)}>{s.label}</Badge>
+  const t = useT(common)
+  return (
+    <Badge className={cn(tone[SESSION_TONE[status]], className)}>{t(`session.${status}`)}</Badge>
+  )
 }
 
 const APPOINTMENT_TONE: Record<AppointmentStatus, keyof typeof tone> = {
@@ -52,8 +55,9 @@ export function AppointmentStatusBadge({
   status: AppointmentStatus
   className?: string
 }) {
+  const t = useT(common)
   return (
-    <Badge className={cn(tone[APPOINTMENT_TONE[status]], className)}>{STATUS_LABEL[status]}</Badge>
+    <Badge className={cn(tone[APPOINTMENT_TONE[status]], className)}>{t(`appt.${status}`)}</Badge>
   )
 }
 

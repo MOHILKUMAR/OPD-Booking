@@ -36,7 +36,8 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/components/ui/**/*.tsx', 'src/main.tsx', 'src/router.tsx'],
+    // i18n/index.tsx is the language provider plus its hooks and helpers
+    files: ['src/components/ui/**/*.tsx', 'src/main.tsx', 'src/router.tsx', 'src/i18n/index.tsx'],
     rules: { 'react-refresh/only-export-components': 'off' },
   },
   {

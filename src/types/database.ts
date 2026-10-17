@@ -51,6 +51,16 @@ export interface Hospital {
   default_booking_fee_paise: number
   online_payments_enabled: boolean
   payment_hold_minutes: number
+  /** Send eligible refunds to Razorpay without waiting for an administrator. */
+  auto_refund_enabled: boolean
+  /** Refunds above this (paise) still wait for an administrator; null = no limit. */
+  auto_refund_max_paise: number | null
+  /** "Your turn is near" when at most this many patients are ahead; 0 = off. */
+  turn_alert_ahead: number
+  /** Visit reminder this many minutes before the OPD starts; 0 = off. */
+  visit_reminder_minutes: number
+  /** Queue SMS copies of alerts (needs a paid provider; off by default). */
+  sms_alerts_enabled: boolean
   is_active: boolean
 }
 
@@ -250,7 +260,17 @@ export interface BookingView {
   estimated_wait_minutes: number | null
   can_cancel: boolean
   cancel_block_reason: string | null
-  notifications: { kind: string; title: string; body: string; created_at: string }[]
+  notifications: BookingNotification[]
+}
+
+/** In-app notification on a booking. `data` holds template values for translated display. */
+export interface BookingNotification {
+  id: string
+  kind: string
+  title: string
+  body: string
+  data?: Record<string, unknown>
+  created_at: string
 }
 
 /** Staff view of an appointment (RLS-protected table select). */
@@ -365,6 +385,8 @@ export interface Refund {
   requested_at: string
   processed_at: string | null
   failure_reason: string | null
+  /** Who started the gateway refund: an administrator or the automatic policy. */
+  initiated_via: 'ADMIN' | 'AUTO' | null
 }
 
 export interface AuditLog {

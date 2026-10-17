@@ -1,7 +1,20 @@
 // Patient booking, tracking and cancellation.
+import { defineMessages, tr } from '@/i18n'
 import { AppError, unwrap } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
 import type { BookingResult, BookingView } from '@/types/database'
+
+const messages = defineMessages({
+  en: {
+    captchaFailed: 'The security check failed or expired. Please complete it again and retry.',
+    sessionFailed: 'Could not start a booking session. Please refresh the page and try again.',
+  },
+  hi: {
+    captchaFailed:
+      'सुरक्षा जाँच विफल हो गई या उसका समय निकल गया। कृपया इसे फिर से पूरा करें और दोबारा कोशिश करें।',
+    sessionFailed: 'बुकिंग शुरू नहीं हो सकी। कृपया पेज रीफ़्रेश करके फिर कोशिश करें।',
+  },
+})
 
 /**
  * Bookings are tied to a Supabase session. Patients do not need an account: we create an
@@ -19,17 +32,9 @@ export async function ensurePatientSession(captchaToken?: string | null): Promis
     : await supabase.auth.signInAnonymously()
   if (error) {
     if (error.code === 'captcha_failed') {
-      throw new AppError(
-        'CAPTCHA_FAILED',
-        'The security check failed or expired. Please complete it again and retry.',
-        error.message,
-      )
+      throw new AppError('CAPTCHA_FAILED', tr(messages, 'captchaFailed'), error.message)
     }
-    throw new AppError(
-      'MQ_AUTH_REQUIRED',
-      'Could not start a booking session. Please refresh the page and try again.',
-      error.message,
-    )
+    throw new AppError('MQ_AUTH_REQUIRED', tr(messages, 'sessionFailed'), error.message)
   }
 }
 

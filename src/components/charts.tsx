@@ -15,6 +15,28 @@ import {
 } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { defineMessages, localeFor, useT } from '@/i18n'
+
+const messages = defineMessages({
+  en: {
+    showAsChart: 'Show {title} as chart',
+    showAsTable: 'Show {title} as table',
+    chartView: 'Chart view',
+    tableView: 'Table view',
+    noData: 'No data in this range yet.',
+    label: 'Label',
+    chartLabel: '{title}. Use the table view for exact values.',
+  },
+  hi: {
+    showAsChart: '{title} चार्ट के रूप में देखें',
+    showAsTable: '{title} तालिका के रूप में देखें',
+    chartView: 'चार्ट व्यू',
+    tableView: 'तालिका व्यू',
+    noData: 'इस अवधि में अभी कोई डेटा नहीं है।',
+    label: 'लेबल',
+    chartLabel: '{title}। सटीक आँकड़ों के लिए तालिका व्यू देखें।',
+  },
+})
 
 const AXIS = {
   stroke: 'var(--muted-foreground)',
@@ -46,7 +68,7 @@ function ChartTooltip({
       <p className="text-muted-foreground">{label}</p>
       <p className="flex items-center gap-2 font-semibold tabular">
         <span className="inline-block size-2.5 rounded-sm bg-series-1" aria-hidden />
-        {payload[0]!.value.toLocaleString('en-IN')}
+        {payload[0]!.value.toLocaleString(localeFor())}
         {unit}
       </p>
     </div>
@@ -68,6 +90,7 @@ export function ChartCard({
   unit?: string
   children: ReactNode
 }) {
+  const t = useT(messages)
   const [asTable, setAsTable] = useState(false)
   const empty = data.every((d) => d.value === 0)
   return (
@@ -81,8 +104,8 @@ export function ChartCard({
           variant="ghost"
           size="icon-sm"
           onClick={() => setAsTable(!asTable)}
-          aria-label={asTable ? `Show ${title} as chart` : `Show ${title} as table`}
-          title={asTable ? 'Chart view' : 'Table view'}
+          aria-label={t(asTable ? 'showAsChart' : 'showAsTable', { title })}
+          title={t(asTable ? 'chartView' : 'tableView')}
         >
           {asTable ? <BarChart3 /> : <Table2 />}
         </Button>
@@ -90,14 +113,14 @@ export function ChartCard({
       <CardContent>
         {empty ? (
           <p className="flex h-56 items-center justify-center text-sm text-muted-foreground">
-            No data in this range yet.
+            {t('noData')}
           </p>
         ) : asTable ? (
           <div className="max-h-64 overflow-y-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="py-1 font-medium">Label</th>
+                  <th className="py-1 font-medium">{t('label')}</th>
                   <th className="py-1 text-right font-medium">{valueLabel}</th>
                 </tr>
               </thead>
@@ -106,7 +129,7 @@ export function ChartCard({
                   <tr key={d.label} className="border-b last:border-0">
                     <td className="py-1">{d.label}</td>
                     <td className="py-1 text-right tabular">
-                      {d.value.toLocaleString('en-IN')}
+                      {d.value.toLocaleString(localeFor())}
                       {unit}
                     </td>
                   </tr>
@@ -115,11 +138,7 @@ export function ChartCard({
             </table>
           </div>
         ) : (
-          <div
-            className="h-56"
-            role="img"
-            aria-label={`${title}. Use the table view for exact values.`}
-          >
+          <div className="h-56" role="img" aria-label={t('chartLabel', { title })}>
             {children}
           </div>
         )}

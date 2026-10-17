@@ -3,6 +3,18 @@
 // pages without the widget never contact challenges.cloudflare.com.
 import { AlertCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { defineMessages, useT } from '@/i18n'
+
+const messages = defineMessages({
+  en: {
+    loadFailed:
+      'The security check could not load. Check your connection, turn off content blockers for this site, and reload the page.',
+  },
+  hi: {
+    loadFailed:
+      'सुरक्षा जाँच लोड नहीं हो सकी। अपना इंटरनेट कनेक्शन जाँचें, इस साइट के लिए कंटेंट ब्लॉकर बंद करें और पेज फिर से लोड करें।',
+  },
+})
 
 interface TurnstileRenderOptions {
   sitekey: string
@@ -58,6 +70,7 @@ export function Turnstile({
   const container = useRef<HTMLDivElement>(null)
   const onTokenRef = useRef(onToken)
   const [failed, setFailed] = useState(false)
+  const t = useT(messages)
 
   useEffect(() => {
     onTokenRef.current = onToken
@@ -96,8 +109,7 @@ export function Turnstile({
     return (
       <p className="flex items-center gap-2 text-sm text-destructive" role="alert">
         <AlertCircle className="size-4 shrink-0" aria-hidden />
-        The security check could not load. Check your connection, turn off content blockers for this
-        site, and reload the page.
+        {t('loadFailed')}
       </p>
     )
   }

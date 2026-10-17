@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Info } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { fetchPayments, fetchRefunds, processRefund, rejectRefund } from '@/api/admin'
 import { ToneBadge } from '@/components/badges'
@@ -25,10 +26,85 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useHospital } from '@/hooks/useHospital'
+import { defineMessages, useT } from '@/i18n'
+import { common } from '@/i18n/common'
 import { env } from '@/lib/env'
 import { errorMessage } from '@/lib/errors'
 import { formatDateTime, formatMoney } from '@/lib/format'
 import type { PaymentStatus, RefundStatus } from '@/types/database'
+
+const messages = defineMessages({
+  en: {
+    refundProcessed: 'Refund processed by Razorpay.',
+    refundSubmitted: 'Refund submitted. Status updates when Razorpay confirms it.',
+    title: 'Payments & refunds',
+    description:
+      'Payment status comes only from server-side verification and signed Razorpay webhooks.',
+    offTitle: 'Online payments are off',
+    offBody:
+      'Bookings with a fee are marked “pay at hospital”. To enable Razorpay (test mode first), turn on the hospital setting, set VITE_PAYMENTS_ENABLED, and set the PAYMENTS_ENABLED and Razorpay secrets on the Edge Functions. See docs/deployment.md.',
+    autoOnUpTo:
+      'Automatic refunds are on for refunds up to {amount}; larger ones wait here for review.',
+    autoOn: 'Automatic refunds are on: requests are sent to Razorpay within about a minute.',
+    autoOff: 'Automatic refunds are off: every refund request waits here for review.',
+    changeInSettings: 'Change in Hospital settings',
+    refunds: 'Refunds',
+    payments: 'Payments',
+    noRefunds: 'No refund requests',
+    requested: 'Requested',
+    booking: 'Booking',
+    amount: 'Amount',
+    reason: 'Reason',
+    status: 'Status',
+    auto: 'auto',
+    refundViaRazorpay: 'Refund via Razorpay',
+    reject: 'Reject',
+    noPayments: 'No payments yet',
+    created: 'Created',
+    mode: 'Mode',
+    verified: 'Verified',
+    gatewayIds: 'Gateway ids',
+    live: 'live',
+    rejectTitle: 'Reject refund request',
+    rejectPlaceholder: 'Reason (shown to the patient and kept in the audit log)',
+    rejectRefund: 'Reject refund',
+  },
+  hi: {
+    refundProcessed: 'Razorpay ने रिफ़ंड प्रोसेस कर दिया।',
+    refundSubmitted: 'रिफ़ंड भेज दिया गया। Razorpay की पुष्टि होने पर स्थिति अपडेट होगी।',
+    title: 'भुगतान और रिफ़ंड',
+    description:
+      'भुगतान की स्थिति केवल सर्वर पर हुई जाँच और Razorpay के हस्ताक्षरित वेबहुक से तय होती है।',
+    offTitle: 'ऑनलाइन भुगतान बंद है',
+    offBody:
+      'शुल्क वाली बुकिंग पर “अस्पताल में भुगतान करें” लिखा जाता है। Razorpay चालू करने के लिए (पहले टेस्ट मोड में), अस्पताल सेटिंग चालू करें, VITE_PAYMENTS_ENABLED सेट करें, और Edge Functions पर PAYMENTS_ENABLED और Razorpay सीक्रेट सेट करें। docs/deployment.md देखें।',
+    autoOnUpTo:
+      '{amount} तक के रिफ़ंड के लिए स्वचालित रिफ़ंड चालू है; इससे बड़े रिफ़ंड समीक्षा के लिए यहीं रुकते हैं।',
+    autoOn: 'स्वचालित रिफ़ंड चालू है: अनुरोध लगभग एक मिनट में Razorpay को भेजे जाते हैं।',
+    autoOff: 'स्वचालित रिफ़ंड बंद है: हर रिफ़ंड अनुरोध समीक्षा के लिए यहीं रुकता है।',
+    changeInSettings: 'अस्पताल सेटिंग्स में बदलें',
+    refunds: 'रिफ़ंड',
+    payments: 'भुगतान',
+    noRefunds: 'कोई रिफ़ंड अनुरोध नहीं',
+    requested: 'अनुरोध का समय',
+    booking: 'बुकिंग',
+    amount: 'राशि',
+    reason: 'कारण',
+    status: 'स्थिति',
+    auto: 'स्वचालित',
+    refundViaRazorpay: 'Razorpay से रिफ़ंड करें',
+    reject: 'अस्वीकार करें',
+    noPayments: 'अभी कोई भुगतान नहीं',
+    created: 'बनने का समय',
+    mode: 'मोड',
+    verified: 'सत्यापन',
+    gatewayIds: 'गेटवे आईडी',
+    live: 'लाइव',
+    rejectTitle: 'रिफ़ंड अनुरोध अस्वीकार करें',
+    rejectPlaceholder: 'कारण (मरीज़ को दिखेगा और ऑडिट लॉग में रहेगा)',
+    rejectRefund: 'रिफ़ंड अस्वीकार करें',
+  },
+})
 
 const PAYMENT_TONE: Record<PaymentStatus, 'green' | 'amber' | 'red' | 'grey' | 'blue'> = {
   CREATED: 'grey',
@@ -49,6 +125,8 @@ const REFUND_TONE: Record<RefundStatus, 'green' | 'amber' | 'red' | 'grey' | 'bl
 export default function PaymentsPage() {
   const { data: hospital } = useHospital()
   const queryClient = useQueryClient()
+  const t = useT(messages)
+  const c = useT(common)
   const [page, setPage] = useState(0)
   const payments = useQuery({
     queryKey: ['admin-payments', hospital?.id, page],
@@ -70,11 +148,7 @@ export default function PaymentsPage() {
   const process = useMutation({
     mutationFn: processRefund,
     onSuccess: (r) => {
-      toast.success(
-        r.status === 'PROCESSED'
-          ? 'Refund processed by Razorpay.'
-          : 'Refund submitted. Status updates when Razorpay confirms it.',
-      )
+      toast.success(r.status === 'PROCESSED' ? t('refundProcessed') : t('refundSubmitted'))
       refresh()
     },
     onError: (e) => {
@@ -96,27 +170,33 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Payments & refunds"
-        description="Payment status comes only from server-side verification and signed Razorpay webhooks."
-      />
+      <PageHeader title={t('title')} description={t('description')} />
       {!onlineOn && (
         <Alert>
           <Info aria-hidden />
-          <AlertTitle>Online payments are off</AlertTitle>
-          <AlertDescription>
-            Bookings with a fee are marked “pay at hospital”. To enable Razorpay (test mode first),
-            turn on the hospital setting, set VITE_PAYMENTS_ENABLED, and set the PAYMENTS_ENABLED
-            and Razorpay secrets on the Edge Functions. See docs/deployment.md.
-          </AlertDescription>
+          <AlertTitle>{t('offTitle')}</AlertTitle>
+          <AlertDescription>{t('offBody')}</AlertDescription>
         </Alert>
+      )}
+      {onlineOn && (
+        <p className="text-sm text-muted-foreground">
+          {hospital?.auto_refund_enabled
+            ? hospital.auto_refund_max_paise
+              ? t('autoOnUpTo', { amount: formatMoney(hospital.auto_refund_max_paise) })
+              : t('autoOn')
+            : t('autoOff')}{' '}
+          <Link to="/admin/settings" className="underline underline-offset-2">
+            {t('changeInSettings')}
+          </Link>
+        </p>
       )}
       <Tabs defaultValue="refunds">
         <TabsList>
           <TabsTrigger value="refunds">
-            Refunds{refunds.data?.some((r) => r.status === 'REQUESTED') ? ' •' : ''}
+            {t('refunds')}
+            {refunds.data?.some((r) => r.status === 'REQUESTED') ? ' •' : ''}
           </TabsTrigger>
-          <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="payments">{t('payments')}</TabsTrigger>
         </TabsList>
         <TabsContent value="refunds" className="mt-4">
           {refunds.isPending ? (
@@ -124,17 +204,17 @@ export default function PaymentsPage() {
           ) : refunds.isError ? (
             <ErrorState error={refunds.error} onRetry={() => refunds.refetch()} />
           ) : refunds.data.length === 0 ? (
-            <EmptyState title="No refund requests" />
+            <EmptyState title={t('noRefunds')} />
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Requested</TableHead>
-                    <TableHead>Booking</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>{t('requested')}</TableHead>
+                    <TableHead>{t('booking')}</TableHead>
+                    <TableHead>{t('amount')}</TableHead>
+                    <TableHead>{t('reason')}</TableHead>
+                    <TableHead>{t('status')}</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
@@ -154,8 +234,13 @@ export default function PaymentsPage() {
                           <span className="block text-xs text-destructive">{r.failure_reason}</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <ToneBadge color={REFUND_TONE[r.status]}>{r.status}</ToneBadge>
+                      <TableCell className="space-x-1 whitespace-nowrap">
+                        <ToneBadge color={REFUND_TONE[r.status]}>
+                          {c(`refund.${r.status}`)}
+                        </ToneBadge>
+                        {r.initiated_via === 'AUTO' && (
+                          <ToneBadge color="teal">{t('auto')}</ToneBadge>
+                        )}
                       </TableCell>
                       <TableCell className="space-x-2 whitespace-nowrap text-right">
                         {(r.status === 'REQUESTED' || r.status === 'FAILED') && (
@@ -165,10 +250,10 @@ export default function PaymentsPage() {
                               disabled={process.isPending || !onlineOn}
                               onClick={() => process.mutate(r.id)}
                             >
-                              Refund via Razorpay
+                              {t('refundViaRazorpay')}
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => setRejecting(r.id)}>
-                              Reject
+                              {t('reject')}
                             </Button>
                           </>
                         )}
@@ -186,20 +271,20 @@ export default function PaymentsPage() {
           ) : payments.isError ? (
             <ErrorState error={payments.error} onRetry={() => payments.refetch()} />
           ) : payments.data.rows.length === 0 ? (
-            <EmptyState title="No payments yet" />
+            <EmptyState title={t('noPayments')} />
           ) : (
             <>
               <div className="overflow-x-auto rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Booking</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Mode</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Verified</TableHead>
-                      <TableHead>Gateway ids</TableHead>
+                      <TableHead>{t('created')}</TableHead>
+                      <TableHead>{t('booking')}</TableHead>
+                      <TableHead>{t('amount')}</TableHead>
+                      <TableHead>{t('mode')}</TableHead>
+                      <TableHead>{t('status')}</TableHead>
+                      <TableHead>{t('verified')}</TableHead>
+                      <TableHead>{t('gatewayIds')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -214,13 +299,15 @@ export default function PaymentsPage() {
                         <TableCell>{formatMoney(p.amount_paise)}</TableCell>
                         <TableCell>
                           {p.gateway_mode === 'test' ? (
-                            <ToneBadge color="amber">test</ToneBadge>
+                            <ToneBadge color="amber">{c('test')}</ToneBadge>
                           ) : (
-                            'live'
+                            t('live')
                           )}
                         </TableCell>
                         <TableCell>
-                          <ToneBadge color={PAYMENT_TONE[p.status]}>{p.status}</ToneBadge>
+                          <ToneBadge color={PAYMENT_TONE[p.status]}>
+                            {c(`payment.${p.status}`)}
+                          </ToneBadge>
                         </TableCell>
                         <TableCell className="text-xs">
                           {p.verified_via
@@ -244,7 +331,7 @@ export default function PaymentsPage() {
                   disabled={page === 0}
                   onClick={() => setPage(page - 1)}
                 >
-                  Previous
+                  {c('previous')}
                 </Button>
                 <Button
                   size="sm"
@@ -252,7 +339,7 @@ export default function PaymentsPage() {
                   disabled={(page + 1) * 25 >= payments.data.total}
                   onClick={() => setPage(page + 1)}
                 >
-                  Next
+                  {c('next')}
                 </Button>
               </div>
             </>
@@ -263,13 +350,13 @@ export default function PaymentsPage() {
       <Dialog open={!!rejecting} onOpenChange={(o) => !o && setRejecting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject refund request</DialogTitle>
+            <DialogTitle>{t('rejectTitle')}</DialogTitle>
           </DialogHeader>
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             maxLength={500}
-            placeholder="Reason (shown to the patient and kept in the audit log)"
+            placeholder={t('rejectPlaceholder')}
           />
           <DialogFooter>
             <Button
@@ -277,7 +364,7 @@ export default function PaymentsPage() {
               disabled={reason.trim().length < 3 || reject.isPending}
               onClick={() => rejecting && reject.mutate({ id: rejecting, why: reason.trim() })}
             >
-              Reject refund
+              {t('rejectRefund')}
             </Button>
           </DialogFooter>
         </DialogContent>

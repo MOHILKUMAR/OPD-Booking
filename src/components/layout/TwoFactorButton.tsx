@@ -24,6 +24,56 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { defineMessages, localeFor, useT } from '@/i18n'
+import { common } from '@/i18n/common'
+
+const messages = defineMessages({
+  en: {
+    title: 'Two-factor authentication',
+    short: '2FA',
+    description:
+      'After your password, sign-in also asks for a 6-digit code from an authenticator app on your phone (Google Authenticator, Microsoft Authenticator, 1Password, Aegis…). Strongly recommended for administrators.',
+    isOn: 'Two-factor authentication is on',
+    isOff: 'Two-factor authentication is off for your account.',
+    removed: 'Authenticator removed',
+    authenticatorApp: 'Authenticator app',
+    added: '{name}, added {date}',
+    keep: 'Keep',
+    yesRemove: 'Yes, remove',
+    remove: 'Remove',
+    withoutIt: 'Without it, anyone who learns your password can sign in as you.',
+    step1: '1. Scan this QR code with your app',
+    qrAlt: 'QR code for your authenticator app',
+    cantScan: 'Can’t scan it? Enter this key in the app instead:',
+    step2: '2. Enter the 6-digit code it shows',
+    verifyAndTurnOn: 'Verify and turn on',
+    setUp: 'Set up authenticator app',
+  },
+  hi: {
+    title: 'दो-चरणीय सत्यापन',
+    short: '2FA',
+    description:
+      'पासवर्ड के बाद, साइन इन करते समय आपके फ़ोन के ऑथेंटिकेटर ऐप (Google Authenticator, Microsoft Authenticator, 1Password, Aegis…) से 6 अंकों का कोड भी माँगा जाएगा। प्रशासकों को इसे ज़रूर चालू करना चाहिए।',
+    isOn: 'दो-चरणीय सत्यापन चालू है',
+    isOff: 'आपके खाते के लिए दो-चरणीय सत्यापन बंद है।',
+    removed: 'ऑथेंटिकेटर हटा दिया गया',
+    authenticatorApp: 'ऑथेंटिकेटर ऐप',
+    added: '{name}, {date} को जोड़ा गया',
+    keep: 'रहने दें',
+    yesRemove: 'हाँ, हटाएँ',
+    remove: 'हटाएँ',
+    withoutIt: 'इसके बिना, आपका पासवर्ड जानने वाला कोई भी व्यक्ति आपके नाम से साइन इन कर सकता है।',
+    step1: '1. अपने ऐप से यह QR कोड स्कैन करें',
+    qrAlt: 'आपके ऑथेंटिकेटर ऐप के लिए QR कोड',
+    cantScan: 'स्कैन नहीं हो रहा? तो ऐप में यह कुंजी (key) लिखें:',
+    step2: '2. ऐप में दिख रहा 6 अंकों का कोड लिखें',
+    verifyAndTurnOn: 'सत्यापित करें और चालू करें',
+    setUp: 'ऑथेंटिकेटर ऐप सेट करें',
+  },
+})
+
+// enrollTotp() names every factor this way; show it in the current language.
+const DEFAULT_FACTOR_NAME = 'Authenticator app'
 
 interface Enrolment {
   factorId: string
@@ -34,6 +84,8 @@ interface Enrolment {
 /** Staff turn on two-factor authentication with an authenticator app (TOTP), or remove it. */
 export function TwoFactorButton() {
   const { userId } = useAuth()
+  const t = useT(messages)
+  const c = useT(common)
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [enrolment, setEnrolment] = useState<Enrolment | null>(null)
@@ -78,7 +130,7 @@ export function TwoFactorButton() {
       }
       setEnrolment(null)
       setCode('')
-      toast.success('Two-factor authentication is on')
+      toast.success(t('isOn'))
       await queryClient.invalidateQueries({ queryKey: ['mfa-factors'] })
     })
 
@@ -86,7 +138,7 @@ export function TwoFactorButton() {
     run(async () => {
       await removeTotp(factorId)
       setConfirmRemove(null)
-      toast.success('Authenticator removed')
+      toast.success(t('removed'))
       await queryClient.invalidateQueries({ queryKey: ['mfa-factors'] })
     })
 
@@ -104,28 +156,19 @@ export function TwoFactorButton() {
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setOpen(true)}
-        title="Two-factor authentication"
-      >
-        <ShieldCheck /> <span className="hidden md:inline">2FA</span>
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)} title={t('title')}>
+        <ShieldCheck /> <span className="hidden md:inline">{t('short')}</span>
       </Button>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Two-factor authentication</DialogTitle>
-            <DialogDescription>
-              After your password, sign-in also asks for a 6-digit code from an authenticator app on
-              your phone (Google Authenticator, Microsoft Authenticator, 1Password, Aegis…).
-              Strongly recommended for administrators.
-            </DialogDescription>
+            <DialogTitle>{t('title')}</DialogTitle>
+            <DialogDescription>{t('description')}</DialogDescription>
           </DialogHeader>
 
           {factors.isPending ? (
             <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-              <Loader2 className="size-4 animate-spin" aria-hidden /> Loading…
+              <Loader2 className="size-4 animate-spin" aria-hidden /> {c('loading')}…
             </p>
           ) : factors.isError ? (
             <Alert variant="destructive">
@@ -135,18 +178,23 @@ export function TwoFactorButton() {
             <div className="grid gap-3">
               <Alert>
                 <ShieldCheck aria-hidden />
-                <AlertTitle>Two-factor authentication is on</AlertTitle>
+                <AlertTitle>{t('isOn')}</AlertTitle>
                 <AlertDescription>
                   {verified.map((f) => (
                     <div key={f.id} className="flex flex-wrap items-center justify-between gap-2">
                       <span>
-                        {f.friendly_name || 'Authenticator app'}, added{' '}
-                        {new Date(f.created_at).toLocaleDateString('en-IN')}
+                        {t('added', {
+                          name:
+                            !f.friendly_name || f.friendly_name === DEFAULT_FACTOR_NAME
+                              ? t('authenticatorApp')
+                              : f.friendly_name,
+                          date: new Date(f.created_at).toLocaleDateString(localeFor()),
+                        })}
                       </span>
                       {confirmRemove === f.id ? (
                         <span className="flex gap-2">
                           <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(null)}>
-                            Keep
+                            {t('keep')}
                           </Button>
                           <Button
                             size="sm"
@@ -154,44 +202,38 @@ export function TwoFactorButton() {
                             disabled={busy}
                             onClick={() => remove(f.id)}
                           >
-                            {busy && <Loader2 className="animate-spin" />} Yes, remove
+                            {busy && <Loader2 className="animate-spin" />} {t('yesRemove')}
                           </Button>
                         </span>
                       ) : (
                         <Button size="sm" variant="outline" onClick={() => setConfirmRemove(f.id)}>
-                          Remove
+                          {t('remove')}
                         </Button>
                       )}
                     </div>
                   ))}
                 </AlertDescription>
               </Alert>
-              {confirmRemove && (
-                <p className="text-sm text-muted-foreground">
-                  Without it, anyone who learns your password can sign in as you.
-                </p>
-              )}
+              {confirmRemove && <p className="text-sm text-muted-foreground">{t('withoutIt')}</p>}
             </div>
           ) : enrolment ? (
             <div className="grid gap-4">
               <div className="grid gap-2">
-                <p className="text-sm font-medium">1. Scan this QR code with your app</p>
+                <p className="text-sm font-medium">{t('step1')}</p>
                 <img
                   src={enrolment.qrCode}
-                  alt="QR code for your authenticator app"
+                  alt={t('qrAlt')}
                   className="size-44 rounded-md border bg-white p-2"
                   width={176}
                   height={176}
                 />
-                <p className="text-sm text-muted-foreground">
-                  Can’t scan it? Enter this key in the app instead:
-                </p>
+                <p className="text-sm text-muted-foreground">{t('cantScan')}</p>
                 <code className="rounded bg-muted px-2 py-1 font-mono text-sm break-all select-all">
                   {enrolment.secret}
                 </code>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="mfa-code">2. Enter the 6-digit code it shows</Label>
+                <Label htmlFor="mfa-code">{t('step2')}</Label>
                 <Input
                   id="mfa-code"
                   inputMode="numeric"
@@ -203,7 +245,7 @@ export function TwoFactorButton() {
               </div>
             </div>
           ) : (
-            <p className="text-sm">Two-factor authentication is off for your account.</p>
+            <p className="text-sm">{t('isOff')}</p>
           )}
 
           {error && (
@@ -216,11 +258,11 @@ export function TwoFactorButton() {
             <DialogFooter>
               {enrolment ? (
                 <Button disabled={code.length !== 6 || busy} onClick={verify}>
-                  {busy && <Loader2 className="animate-spin" />} Verify and turn on
+                  {busy && <Loader2 className="animate-spin" />} {t('verifyAndTurnOn')}
                 </Button>
               ) : (
                 <Button disabled={busy} onClick={start}>
-                  {busy && <Loader2 className="animate-spin" />} Set up authenticator app
+                  {busy && <Loader2 className="animate-spin" />} {t('setUp')}
                 </Button>
               )}
             </DialogFooter>

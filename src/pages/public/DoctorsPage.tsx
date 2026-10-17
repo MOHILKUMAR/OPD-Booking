@@ -18,12 +18,64 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useDebounced, useHospital, useToday } from '@/hooks/useHospital'
+import { defineMessages, localeFor, useLanguage, useT } from '@/i18n'
+import { common } from '@/i18n/common'
 import { addDays, formatMoney } from '@/lib/format'
 
 const PAGE_SIZE = 8
 const ALL = '__all'
 
+const messages = defineMessages({
+  en: {
+    title: 'Find a doctor',
+    description: 'Live OPD status and token availability.',
+    updated: 'Updated {time}',
+    searchLabel: 'Doctor or specialty',
+    searchPlaceholder: 'e.g. Rao, Paediatrician',
+    department: 'Department',
+    allDepartments: 'All departments',
+    specialty: 'Specialty',
+    allSpecialties: 'All specialties',
+    availableOnly: 'Open for booking only',
+    noMatch: 'No doctors match these filters',
+    noMatchAvailable: 'Turn off "Open for booking only" to see all doctors.',
+    noMatchSearch: 'Try a different search.',
+    doctorCount: '{count} doctor|{count} doctors',
+    consultationFee: 'Consultation fee {fee} (paid at hospital)',
+    noOpdToday: 'No OPD today.',
+    noOpdTomorrow: 'No OPD tomorrow.',
+    viewProfile: 'View profile',
+    pagination: 'Pagination',
+    pageOf: 'Page {page} of {pages}',
+  },
+  hi: {
+    title: 'डॉक्टर खोजें',
+    description: 'ओपीडी की लाइव स्थिति और टोकन की उपलब्धता।',
+    updated: '{time} पर अपडेट',
+    searchLabel: 'डॉक्टर या विशेषज्ञता',
+    searchPlaceholder: 'जैसे: Rao, Paediatrician',
+    department: 'विभाग',
+    allDepartments: 'सभी विभाग',
+    specialty: 'विशेषज्ञता',
+    allSpecialties: 'सभी विशेषज्ञता',
+    availableOnly: 'केवल बुकिंग के लिए खुले',
+    noMatch: 'इन फ़िल्टर से कोई डॉक्टर नहीं मिला',
+    noMatchAvailable: 'सभी डॉक्टर देखने के लिए "केवल बुकिंग के लिए खुले" बंद करें।',
+    noMatchSearch: 'कुछ और खोजकर देखें।',
+    doctorCount: '{count} डॉक्टर|{count} डॉक्टर',
+    consultationFee: 'परामर्श शुल्क {fee} (अस्पताल में देना है)',
+    noOpdToday: 'आज ओपीडी नहीं है।',
+    noOpdTomorrow: 'कल ओपीडी नहीं है।',
+    viewProfile: 'प्रोफ़ाइल देखें',
+    pagination: 'पेज',
+    pageOf: 'पेज {page} / {pages}',
+  },
+})
+
 export function DoctorsPage() {
+  const t = useT(messages)
+  const c = useT(common)
+  const { lang } = useLanguage()
   const { data: hospital } = useHospital()
   const today = useToday()
   const [params, setParams] = useSearchParams()
@@ -97,15 +149,16 @@ export function DoctorsPage() {
   return (
     <div>
       <PageHeader
-        title="Find a doctor"
-        description="Live OPD status and token availability."
+        title={t('title')}
+        description={t('description')}
         actions={
           doctors.dataUpdatedAt ? (
             <span className="text-xs text-muted-foreground">
-              Updated{' '}
-              {new Date(doctors.dataUpdatedAt).toLocaleTimeString('en-IN', {
-                hour: 'numeric',
-                minute: '2-digit',
+              {t('updated', {
+                time: new Date(doctors.dataUpdatedAt).toLocaleTimeString(localeFor(lang), {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                }),
               })}
             </span>
           ) : null
@@ -116,7 +169,7 @@ export function DoctorsPage() {
         <CardContent className="grid gap-4 px-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2 lg:col-span-1">
             <Label htmlFor="doctor-search" className="mb-1.5">
-              Doctor or specialty
+              {t('searchLabel')}
             </Label>
             <div className="relative">
               <Search
@@ -127,23 +180,23 @@ export function DoctorsPage() {
                 id="doctor-search"
                 value={q}
                 onChange={(e) => update({ q: e.target.value || null })}
-                placeholder="e.g. Rao, Paediatrician"
+                placeholder={t('searchPlaceholder')}
                 className="pl-8"
                 maxLength={60}
               />
             </div>
           </div>
           <div>
-            <Label className="mb-1.5">Department</Label>
+            <Label className="mb-1.5">{t('department')}</Label>
             <Select
               value={department || ALL}
               onValueChange={(v) => update({ department: v === ALL ? null : v })}
             >
-              <SelectTrigger className="w-full" aria-label="Department">
+              <SelectTrigger className="w-full" aria-label={t('department')}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All departments</SelectItem>
+                <SelectItem value={ALL}>{t('allDepartments')}</SelectItem>
                 {departments.data?.map((d) => (
                   <SelectItem key={d.id} value={d.id}>
                     {d.name}
@@ -153,16 +206,16 @@ export function DoctorsPage() {
             </Select>
           </div>
           <div>
-            <Label className="mb-1.5">Specialty</Label>
+            <Label className="mb-1.5">{t('specialty')}</Label>
             <Select
               value={specialty || ALL}
               onValueChange={(v) => update({ specialty: v === ALL ? null : v })}
             >
-              <SelectTrigger className="w-full" aria-label="Specialty">
+              <SelectTrigger className="w-full" aria-label={t('specialty')}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All specialties</SelectItem>
+                <SelectItem value={ALL}>{t('allSpecialties')}</SelectItem>
                 {specialties.data?.map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}
@@ -174,17 +227,17 @@ export function DoctorsPage() {
           <div className="flex flex-col justify-end gap-3">
             <Tabs value={day} onValueChange={(v) => update({ day: v === 'today' ? null : v })}>
               <TabsList className="w-full">
-                <TabsTrigger value="today">Today</TabsTrigger>
-                <TabsTrigger value="tomorrow">Tomorrow</TabsTrigger>
+                <TabsTrigger value="today">{c('today')}</TabsTrigger>
+                <TabsTrigger value="tomorrow">{c('tomorrow')}</TabsTrigger>
               </TabsList>
             </Tabs>
             <div className="flex items-center gap-2">
               <Switch
                 id="available-only"
                 checked={availableOnly}
-                onCheckedChange={(c) => update({ available: c ? '1' : null })}
+                onCheckedChange={(on) => update({ available: on ? '1' : null })}
               />
-              <Label htmlFor="available-only">Open for booking only</Label>
+              <Label htmlFor="available-only">{t('availableOnly')}</Label>
             </div>
           </div>
         </CardContent>
@@ -196,17 +249,13 @@ export function DoctorsPage() {
         <ErrorState error={doctors.error} onRetry={() => doctors.refetch()} />
       ) : total === 0 ? (
         <EmptyState
-          title="No doctors match these filters"
-          description={
-            availableOnly
-              ? 'Turn off "Open for booking only" to see all doctors.'
-              : 'Try a different search.'
-          }
+          title={t('noMatch')}
+          description={availableOnly ? t('noMatchAvailable') : t('noMatchSearch')}
         />
       ) : (
         <>
           <p className="mb-3 text-sm text-muted-foreground" aria-live="polite">
-            {total} doctor{total === 1 ? '' : 's'}
+            {t('doctorCount', { count: total })}
           </p>
           <div className="grid gap-4 md:grid-cols-2">
             {doctors.data.items.map((d) => (
@@ -228,15 +277,14 @@ export function DoctorsPage() {
                       )}
                       {d.consultation_fee_paise > 0 && (
                         <p className="mt-1 text-xs">
-                          Consultation fee {formatMoney(d.consultation_fee_paise)} (paid at
-                          hospital)
+                          {t('consultationFee', { fee: formatMoney(d.consultation_fee_paise) })}
                         </p>
                       )}
                     </div>
                   </div>
                   {d.sessions.length === 0 ? (
                     <p className="rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
-                      No OPD {day}.
+                      {day === 'tomorrow' ? t('noOpdTomorrow') : t('noOpdToday')}
                     </p>
                   ) : (
                     <div className="space-y-2">
@@ -246,32 +294,33 @@ export function DoctorsPage() {
                     </div>
                   )}
                   <Button asChild variant="outline" size="sm">
-                    <Link to={`/doctors/${d.id}`}>View profile</Link>
+                    <Link to={`/doctors/${d.id}`}>{t('viewProfile')}</Link>
                   </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
           {pages > 1 && (
-            <nav className="mt-6 flex items-center justify-center gap-3" aria-label="Pagination">
+            <nav
+              className="mt-6 flex items-center justify-center gap-3"
+              aria-label={t('pagination')}
+            >
               <Button
                 variant="outline"
                 size="sm"
                 disabled={page === 0}
                 onClick={() => update({ page: String(page - 1) })}
               >
-                <ChevronLeft /> Previous
+                <ChevronLeft /> {c('previous')}
               </Button>
-              <span className="text-sm tabular">
-                Page {page + 1} of {pages}
-              </span>
+              <span className="text-sm tabular">{t('pageOf', { page: page + 1, pages })}</span>
               <Button
                 variant="outline"
                 size="sm"
                 disabled={page + 1 >= pages}
                 onClick={() => update({ page: String(page + 1) })}
               >
-                Next <ChevronRight />
+                {c('next')} <ChevronRight />
               </Button>
             </nav>
           )}

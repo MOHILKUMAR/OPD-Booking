@@ -26,8 +26,43 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useHospital } from '@/hooks/useHospital'
+import { defineMessages, useT } from '@/i18n'
+import { common } from '@/i18n/common'
 import { errorMessage } from '@/lib/errors'
 import type { Department } from '@/types/database'
+
+const messages = defineMessages({
+  en: {
+    title: 'Departments',
+    addDepartment: 'Add department',
+    editDepartment: 'Edit department',
+    saved: 'Department saved',
+    name: 'Name',
+    description: 'Description',
+    order: 'Order',
+    status: 'Status',
+    active: 'Active',
+    hidden: 'Hidden',
+    edit: 'Edit',
+    sortOrder: 'Sort order',
+    shownToPatients: 'Shown to patients',
+  },
+  hi: {
+    title: 'विभाग',
+    addDepartment: 'विभाग जोड़ें',
+    editDepartment: 'विभाग बदलें',
+    saved: 'विभाग सहेजा गया',
+    name: 'नाम',
+    description: 'विवरण',
+    order: 'क्रम',
+    status: 'स्थिति',
+    active: 'सक्रिय',
+    hidden: 'छिपा हुआ',
+    edit: 'बदलें',
+    sortOrder: 'दिखाने का क्रम',
+    shownToPatients: 'मरीज़ों को दिखाएँ',
+  },
+})
 
 type Draft = {
   id?: string
@@ -40,6 +75,8 @@ type Draft = {
 export default function DepartmentsPage() {
   const { data: hospital } = useHospital()
   const queryClient = useQueryClient()
+  const t = useT(messages)
+  const c = useT(common)
   const list = useQuery({
     queryKey: ['admin-departments', hospital?.id],
     queryFn: () => fetchAllDepartments(hospital!.id),
@@ -56,7 +93,7 @@ export default function DepartmentsPage() {
         description: d.description.trim() || null,
       }),
     onSuccess: () => {
-      toast.success('Department saved')
+      toast.success(t('saved'))
       setDraft(null)
       void queryClient.invalidateQueries({ queryKey: ['admin-departments'] })
       void queryClient.invalidateQueries({ queryKey: ['departments'] })
@@ -80,10 +117,10 @@ export default function DepartmentsPage() {
   return (
     <div>
       <PageHeader
-        title="Departments"
+        title={t('title')}
         actions={
           <Button onClick={() => edit()}>
-            <Plus /> Add department
+            <Plus /> {t('addDepartment')}
           </Button>
         }
       />
@@ -96,10 +133,10 @@ export default function DepartmentsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Order</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('name')}</TableHead>
+                <TableHead>{t('description')}</TableHead>
+                <TableHead>{t('order')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -113,14 +150,14 @@ export default function DepartmentsPage() {
                   <TableCell>{d.sort_order}</TableCell>
                   <TableCell>
                     {d.is_active ? (
-                      <ToneBadge color="green">Active</ToneBadge>
+                      <ToneBadge color="green">{t('active')}</ToneBadge>
                     ) : (
-                      <ToneBadge color="grey">Hidden</ToneBadge>
+                      <ToneBadge color="grey">{t('hidden')}</ToneBadge>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button size="sm" variant="outline" onClick={() => edit(d)}>
-                      Edit
+                      {t('edit')}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -133,12 +170,12 @@ export default function DepartmentsPage() {
       <Dialog open={!!draft} onOpenChange={(o) => !o && setDraft(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{draft?.id ? 'Edit department' : 'Add department'}</DialogTitle>
+            <DialogTitle>{draft?.id ? t('editDepartment') : t('addDepartment')}</DialogTitle>
           </DialogHeader>
           {draft && (
             <div className="grid gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="dep-name">Name</Label>
+                <Label htmlFor="dep-name">{t('name')}</Label>
                 <Input
                   id="dep-name"
                   value={draft.name}
@@ -147,7 +184,7 @@ export default function DepartmentsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="dep-desc">Description</Label>
+                <Label htmlFor="dep-desc">{t('description')}</Label>
                 <Textarea
                   id="dep-desc"
                   value={draft.description}
@@ -156,7 +193,7 @@ export default function DepartmentsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="dep-order">Sort order</Label>
+                <Label htmlFor="dep-order">{t('sortOrder')}</Label>
                 <Input
                   id="dep-order"
                   type="number"
@@ -167,9 +204,9 @@ export default function DepartmentsPage() {
               <label className="flex items-center gap-2 text-sm">
                 <Switch
                   checked={draft.is_active}
-                  onCheckedChange={(c) => setDraft({ ...draft, is_active: c })}
+                  onCheckedChange={(on) => setDraft({ ...draft, is_active: on })}
                 />{' '}
-                Shown to patients
+                {t('shownToPatients')}
               </label>
             </div>
           )}
@@ -178,7 +215,7 @@ export default function DepartmentsPage() {
               disabled={!draft || draft.name.trim().length < 2 || save.isPending}
               onClick={() => draft && save.mutate(draft)}
             >
-              Save
+              {c('save')}
             </Button>
           </DialogFooter>
         </DialogContent>

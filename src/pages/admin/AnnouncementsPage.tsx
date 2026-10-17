@@ -26,17 +26,78 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useHospital } from '@/hooks/useHospital'
+import { defineMessages, useT } from '@/i18n'
+import { common } from '@/i18n/common'
 import { errorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import type { Announcement, AnnouncementKind } from '@/types/database'
 
-const KINDS: Record<AnnouncementKind, string> = {
-  GENERAL: 'General',
-  DOCTOR_DELAY: 'Doctor delay',
-  OPD_CANCELLED: 'OPD cancelled',
-  HOLIDAY: 'Holiday',
-  SCHEDULE_CHANGE: 'Schedule change',
-}
+const messages = defineMessages({
+  en: {
+    'kind.GENERAL': 'General',
+    'kind.DOCTOR_DELAY': 'Doctor delay',
+    'kind.OPD_CANCELLED': 'OPD cancelled',
+    'kind.HOLIDAY': 'Holiday',
+    'kind.SCHEDULE_CHANGE': 'Schedule change',
+    saved: 'Announcement saved',
+    title: 'Announcements',
+    description:
+      'Shown on the home page and (optionally) the waiting-room display. Author and publish time are recorded by the server.',
+    newAnnouncement: 'New announcement',
+    editAnnouncement: 'Edit announcement',
+    empty: 'No announcements',
+    expired: 'Expired',
+    published: 'Published',
+    draft: 'Draft',
+    onTv: 'On TV',
+    publishedAt: 'Published {time}',
+    createdAt: 'Created {time}',
+    expiresAt: 'expires {time}',
+    edit: 'Edit',
+    delete: 'Delete',
+    type: 'Type',
+    titleLabel: 'Title',
+    message: 'Message',
+    expires: 'Expires (optional)',
+    showOnTv: 'Show on waiting-room TV',
+  },
+  hi: {
+    'kind.GENERAL': 'सामान्य',
+    'kind.DOCTOR_DELAY': 'डॉक्टर की देरी',
+    'kind.OPD_CANCELLED': 'ओपीडी रद्द',
+    'kind.HOLIDAY': 'छुट्टी',
+    'kind.SCHEDULE_CHANGE': 'समय-सारणी में बदलाव',
+    saved: 'सूचना सहेजी गई',
+    title: 'सूचनाएँ',
+    description:
+      'होम पेज पर और (चाहें तो) प्रतीक्षा कक्ष के डिस्प्ले पर दिखती हैं। लेखक और प्रकाशन का समय सर्वर दर्ज करता है।',
+    newAnnouncement: 'नई सूचना',
+    editAnnouncement: 'सूचना बदलें',
+    empty: 'कोई सूचना नहीं',
+    expired: 'समय समाप्त',
+    published: 'प्रकाशित',
+    draft: 'ड्राफ़्ट',
+    onTv: 'टीवी पर',
+    publishedAt: '{time} को प्रकाशित',
+    createdAt: '{time} को बनाई गई',
+    expiresAt: 'समाप्ति: {time}',
+    edit: 'बदलें',
+    delete: 'हटाएँ',
+    type: 'प्रकार',
+    titleLabel: 'शीर्षक',
+    message: 'संदेश',
+    expires: 'समाप्ति (वैकल्पिक)',
+    showOnTv: 'प्रतीक्षा कक्ष के टीवी पर दिखाएँ',
+  },
+})
+
+const KINDS: AnnouncementKind[] = [
+  'GENERAL',
+  'DOCTOR_DELAY',
+  'OPD_CANCELLED',
+  'HOLIDAY',
+  'SCHEDULE_CHANGE',
+]
 
 interface Draft {
   id?: string
@@ -51,6 +112,8 @@ interface Draft {
 export default function AnnouncementsPage() {
   const { data: hospital } = useHospital()
   const queryClient = useQueryClient()
+  const t = useT(messages)
+  const c = useT(common)
   const list = useQuery({
     queryKey: ['admin-announcements', hospital?.id],
     queryFn: () => fetchAllAnnouncements(hospital!.id),
@@ -76,7 +139,7 @@ export default function AnnouncementsPage() {
         expires_at: d.expires ? new Date(d.expires).toISOString() : null,
       }),
     onSuccess: () => {
-      toast.success('Announcement saved')
+      toast.success(t('saved'))
       setDraft(null)
       invalidate()
     },
@@ -113,11 +176,11 @@ export default function AnnouncementsPage() {
   return (
     <div>
       <PageHeader
-        title="Announcements"
-        description="Shown on the home page and (optionally) the waiting-room display. Author and publish time are recorded by the server."
+        title={t('title')}
+        description={t('description')}
         actions={
           <Button onClick={() => edit()}>
-            <Plus /> New announcement
+            <Plus /> {t('newAnnouncement')}
           </Button>
         }
       />
@@ -126,7 +189,7 @@ export default function AnnouncementsPage() {
       ) : list.isError ? (
         <ErrorState error={list.error} onRetry={() => list.refetch()} />
       ) : list.data.length === 0 ? (
-        <EmptyState title="No announcements" />
+        <EmptyState title={t('empty')} />
       ) : (
         <div className="space-y-3">
           {list.data.map((a) => {
@@ -137,36 +200,37 @@ export default function AnnouncementsPage() {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{a.title}</p>
-                      <ToneBadge color="blue">{KINDS[a.kind]}</ToneBadge>
+                      <ToneBadge color="blue">{t(`kind.${a.kind}`)}</ToneBadge>
                       {a.is_published ? (
                         expired ? (
-                          <ToneBadge color="grey">Expired</ToneBadge>
+                          <ToneBadge color="grey">{t('expired')}</ToneBadge>
                         ) : (
-                          <ToneBadge color="green">Published</ToneBadge>
+                          <ToneBadge color="green">{t('published')}</ToneBadge>
                         )
                       ) : (
-                        <ToneBadge color="grey">Draft</ToneBadge>
+                        <ToneBadge color="grey">{t('draft')}</ToneBadge>
                       )}
-                      {a.show_on_display && <ToneBadge color="teal">On TV</ToneBadge>}
+                      {a.show_on_display && <ToneBadge color="teal">{t('onTv')}</ToneBadge>}
                     </div>
                     <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
                       {a.body}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {a.published_at
-                        ? `Published ${formatDateTime(a.published_at)}`
-                        : `Created ${formatDateTime(a.created_at)}`}
-                      {a.expires_at && ` · expires ${formatDateTime(a.expires_at)}`}
+                        ? t('publishedAt', { time: formatDateTime(a.published_at) })
+                        : t('createdAt', { time: formatDateTime(a.created_at) })}
+                      {a.expires_at &&
+                        ` · ${t('expiresAt', { time: formatDateTime(a.expires_at) })}`}
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => edit(a)}>
-                      Edit
+                      {t('edit')}
                     </Button>
                     <Button
                       size="icon-sm"
                       variant="ghost"
-                      aria-label="Delete"
+                      aria-label={t('delete')}
                       onClick={() => remove.mutate(a.id)}
                     >
                       <Trash2 />
@@ -182,12 +246,12 @@ export default function AnnouncementsPage() {
       <Dialog open={!!draft} onOpenChange={(o) => !o && setDraft(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{draft?.id ? 'Edit announcement' : 'New announcement'}</DialogTitle>
+            <DialogTitle>{draft?.id ? t('editAnnouncement') : t('newAnnouncement')}</DialogTitle>
           </DialogHeader>
           {draft && (
             <div className="grid gap-3">
               <div className="space-y-1.5">
-                <Label>Type</Label>
+                <Label>{t('type')}</Label>
                 <Select
                   value={draft.kind}
                   onValueChange={(v) => setDraft({ ...draft, kind: v as AnnouncementKind })}
@@ -196,16 +260,16 @@ export default function AnnouncementsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(KINDS).map(([k, label]) => (
+                    {KINDS.map((k) => (
                       <SelectItem key={k} value={k}>
-                        {label}
+                        {t(`kind.${k}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="an-title">Title</Label>
+                <Label htmlFor="an-title">{t('titleLabel')}</Label>
                 <Input
                   id="an-title"
                   maxLength={120}
@@ -214,7 +278,7 @@ export default function AnnouncementsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="an-body">Message</Label>
+                <Label htmlFor="an-body">{t('message')}</Label>
                 <Textarea
                   id="an-body"
                   rows={4}
@@ -224,7 +288,7 @@ export default function AnnouncementsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="an-exp">Expires (optional)</Label>
+                <Label htmlFor="an-exp">{t('expires')}</Label>
                 <Input
                   id="an-exp"
                   type="datetime-local"
@@ -235,16 +299,16 @@ export default function AnnouncementsPage() {
               <label className="flex items-center gap-2 text-sm">
                 <Switch
                   checked={draft.is_published}
-                  onCheckedChange={(c) => setDraft({ ...draft, is_published: c })}
+                  onCheckedChange={(on) => setDraft({ ...draft, is_published: on })}
                 />{' '}
-                Published
+                {t('published')}
               </label>
               <label className="flex items-center gap-2 text-sm">
                 <Switch
                   checked={draft.show_on_display}
-                  onCheckedChange={(c) => setDraft({ ...draft, show_on_display: c })}
+                  onCheckedChange={(on) => setDraft({ ...draft, show_on_display: on })}
                 />{' '}
-                Show on waiting-room TV
+                {t('showOnTv')}
               </label>
             </div>
           )}
@@ -258,7 +322,7 @@ export default function AnnouncementsPage() {
               }
               onClick={() => draft && save.mutate(draft)}
             >
-              Save
+              {c('save')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -15,11 +15,63 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useHospital } from '@/hooks/useHospital'
 import { useTurnstile } from '@/hooks/useTurnstile'
+import { defineMessages, useT } from '@/i18n'
 import { supabase } from '@/lib/supabase'
 
+const messages = defineMessages({
+  en: {
+    emailRequired: 'Enter your work email',
+    passwordRequired: 'Enter your password',
+    captchaMissing: 'Please complete the security check, then sign in.',
+    captchaFailed: 'The security check failed or expired. Please complete it again.',
+    badCredentials: 'Email or password is incorrect, or the account is disabled.',
+    title: 'Staff sign in',
+    mfaTitle: 'Two-factor authentication',
+    mfaDescription: 'Enter the 6-digit code from your authenticator app for {email}.',
+    thisAccount: 'this account',
+    audience: '{hospital} — doctors, reception and administrators',
+    noRole: 'This account has no staff role. Ask an administrator to grant access.',
+    signOut: 'Sign out',
+    email: 'Email',
+    password: 'Password',
+    signIn: 'Sign in',
+    backToPatientSite: 'Back to patient site',
+    code: 'Authentication code',
+    verify: 'Verify',
+    cancelAndSignOut: 'Cancel and sign out',
+    lostPhone:
+      'Lost your phone? Ask whoever manages the hospital’s Supabase project to remove your authenticator, then sign in with your password.',
+  },
+  hi: {
+    emailRequired: 'अपना कार्य ईमेल लिखें',
+    passwordRequired: 'अपना पासवर्ड लिखें',
+    captchaMissing: 'कृपया पहले सुरक्षा जाँच पूरी करें, फिर साइन इन करें।',
+    captchaFailed: 'सुरक्षा जाँच विफल हो गई या उसका समय ख़त्म हो गया। कृपया इसे फिर से पूरा करें।',
+    badCredentials: 'ईमेल या पासवर्ड गलत है, या यह खाता बंद है।',
+    title: 'स्टाफ़ साइन इन',
+    mfaTitle: 'दो-चरणीय सत्यापन',
+    mfaDescription: '{email} के लिए अपने ऑथेंटिकेटर ऐप से 6 अंकों का कोड लिखें।',
+    thisAccount: 'इस खाते',
+    audience: '{hospital} — डॉक्टर, रिसेप्शन और प्रशासक',
+    noRole: 'इस खाते के पास कोई स्टाफ़ भूमिका नहीं है। एक्सेस के लिए किसी प्रशासक से कहें।',
+    signOut: 'साइन आउट',
+    email: 'ईमेल',
+    password: 'पासवर्ड',
+    signIn: 'साइन इन करें',
+    backToPatientSite: 'मरीज़ों की साइट पर वापस जाएँ',
+    code: 'सत्यापन कोड',
+    verify: 'सत्यापित करें',
+    cancelAndSignOut: 'रद्द करें और साइन आउट करें',
+    lostPhone:
+      'फ़ोन खो गया? अस्पताल का Supabase प्रोजेक्ट संभालने वाले व्यक्ति से अपना ऑथेंटिकेटर हटवाएँ, फिर अपने पासवर्ड से साइन इन करें।',
+  },
+})
+type Key = keyof typeof messages.en
+
+// Messages are keys, translated when shown, so they follow a language switch.
 const schema = z.object({
-  email: z.email('Enter your work email'),
-  password: z.string().min(1, 'Enter your password'),
+  email: z.email('emailRequired' satisfies Key),
+  password: z.string().min(1, 'passwordRequired' satisfies Key),
 })
 
 export default function StaffLoginPage() {
@@ -27,11 +79,13 @@ export default function StaffLoginPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const { data: hospital } = useHospital()
-  const [error, setError] = useState<string | null>(null)
+  const t = useT(messages)
+  const [error, setError] = useState<Key | null>(null)
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: { email: '', password: '' },
   })
+  const fieldError = (message?: string) => (message ? t(message as Key) : null)
 
   // Once signed in as staff (with the authenticator code, if the account has one), continue to
   // the requested page (only same-site paths).
@@ -63,17 +117,17 @@ export default function StaffLoginPage() {
 
   const onSubmit = form.handleSubmit(async ({ email, password }) => {
     setError(null)
-    if (captcha.missing) return setError('Please complete the security check, then sign in.')
+    if (captcha.missing) return setError('captchaMissing')
     const captchaToken = captcha.token
     const { error: signInError } = captchaToken
       ? await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } })
       : await supabase.auth.signInWithPassword({ email, password })
     if (captchaToken) captcha.renew()
     if (signInError?.code === 'captcha_failed') {
-      setError('The security check failed or expired. Please complete it again.')
+      setError('captchaFailed')
     } else if (signInError) {
       // Same message for unknown email and wrong password (no account enumeration).
-      setError('Email or password is incorrect, or the account is disabled.')
+      setError('badCredentials')
     }
   })
 
@@ -88,11 +142,11 @@ export default function StaffLoginPage() {
         <Card className="w-full max-w-sm">
           <CardHeader>
             <LockKeyhole className="size-8 text-primary" aria-hidden />
-            <CardTitle>{mfaStep ? 'Two-factor authentication' : 'Staff sign in'}</CardTitle>
+            <CardTitle>{mfaStep ? t('mfaTitle') : t('title')}</CardTitle>
             <CardDescription>
               {mfaStep
-                ? `Enter the 6-digit code from your authenticator app for ${auth.session?.user.email ?? 'this account'}.`
-                : `${hospital?.name ?? 'MediQueue'} — doctors, reception and administrators`}
+                ? t('mfaDescription', { email: auth.session?.user.email ?? t('thisAccount') })
+                : t('audience', { hospital: hospital?.name ?? 'MediQueue' })}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -101,18 +155,16 @@ export default function StaffLoginPage() {
             ) : signedInWithoutRole ? (
               <div className="space-y-3">
                 <Alert variant="destructive">
-                  <AlertDescription>
-                    This account has no staff role. Ask an administrator to grant access.
-                  </AlertDescription>
+                  <AlertDescription>{t('noRole')}</AlertDescription>
                 </Alert>
                 <Button variant="outline" className="w-full" onClick={() => auth.signOut()}>
-                  Sign out
+                  {t('signOut')}
                 </Button>
               </div>
             ) : (
               <form onSubmit={onSubmit} className="space-y-4" noValidate>
                 <div className="space-y-1.5">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t('email')}</Label>
                   <Input
                     id="email"
                     type="email"
@@ -121,12 +173,12 @@ export default function StaffLoginPage() {
                   />
                   {form.formState.errors.email && (
                     <p className="text-sm text-destructive">
-                      {form.formState.errors.email.message}
+                      {fieldError(form.formState.errors.email.message)}
                     </p>
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">{t('password')}</Label>
                   <Input
                     id="password"
                     type="password"
@@ -135,7 +187,7 @@ export default function StaffLoginPage() {
                   />
                   {form.formState.errors.password && (
                     <p className="text-sm text-destructive">
-                      {form.formState.errors.password.message}
+                      {fieldError(form.formState.errors.password.message)}
                     </p>
                   )}
                 </div>
@@ -149,17 +201,18 @@ export default function StaffLoginPage() {
                 )}
                 {error && (
                   <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
+                    <AlertDescription>{t(error)}</AlertDescription>
                   </Alert>
                 )}
                 <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting && <Loader2 className="animate-spin" />} Sign in
+                  {form.formState.isSubmitting && <Loader2 className="animate-spin" />}{' '}
+                  {t('signIn')}
                 </Button>
               </form>
             )}
             <p className="mt-4 text-center text-sm">
               <Link to="/" className="text-muted-foreground hover:underline">
-                Back to patient site
+                {t('backToPatientSite')}
               </Link>
             </p>
           </CardContent>
@@ -171,6 +224,7 @@ export default function StaffLoginPage() {
 
 /** Second sign-in step for accounts with an authenticator app: upgrades the session to aal2. */
 function TotpStep({ onCancel }: { onCancel: () => void }) {
+  const t = useT(messages)
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -193,7 +247,7 @@ function TotpStep({ onCancel }: { onCancel: () => void }) {
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
       <div className="space-y-1.5">
-        <Label htmlFor="totp-code">Authentication code</Label>
+        <Label htmlFor="totp-code">{t('code')}</Label>
         <Input
           id="totp-code"
           inputMode="numeric"
@@ -210,15 +264,12 @@ function TotpStep({ onCancel }: { onCancel: () => void }) {
         </Alert>
       )}
       <Button type="submit" className="w-full" disabled={code.length !== 6 || busy}>
-        {busy && <Loader2 className="animate-spin" />} Verify
+        {busy && <Loader2 className="animate-spin" />} {t('verify')}
       </Button>
       <Button type="button" variant="ghost" className="w-full" onClick={onCancel}>
-        Cancel and sign out
+        {t('cancelAndSignOut')}
       </Button>
-      <p className="text-center text-xs text-muted-foreground">
-        Lost your phone? Ask whoever manages the hospital’s Supabase project to remove your
-        authenticator, then sign in with your password.
-      </p>
+      <p className="text-center text-xs text-muted-foreground">{t('lostPhone')}</p>
     </form>
   )
 }
