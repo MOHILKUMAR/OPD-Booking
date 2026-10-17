@@ -16,6 +16,7 @@ import {
   verifyWebhookSignature,
   type RazorpayClient,
 } from './razorpay.ts'
+import { noProvider, type MessageSender, type SendResult } from './messaging.ts'
 import {
   bookingRequestSchema,
   createStaffSchema,
@@ -72,6 +73,8 @@ export interface Deps {
   auth: CallerAuth
   razorpay?: RazorpayClient
   authAdmin?: AuthAdmin
+  /** SMS/WhatsApp provider for queued alert copies; defaults to none (nothing is sent). */
+  messages?: MessageSender
   log?: (msg: string) => void
 }
 
@@ -443,22 +446,145 @@ export function createStaffHandler(d: Deps) {
 }
 
 // ---------------------------------------------------------------------------
-// housekeeping (cron alternative when pg_cron is unavailable)
+// Shared-secret endpoints called by schedulers (no user JWT)
 // ---------------------------------------------------------------------------
+/** Returns an error response unless `provided` equals the configured secret (24+ chars). */
+function sharedSecretError(provided: string | null, expected: string | undefined): Response | null {
+  if (!expected || expected.length < 24) return json({ code: 'NOT_CONFIGURED' }, 503)
+  // compare as hex of the UTF-8 bytes so length leaks nothing beyond "wrong length"
+  const hex = (v: string) =>
+    Array.from(new TextEncoder().encode(v), (b) => b.toString(16).padStart(2, '0')).join('')
+  if (!timingSafeEqualHex(hex(provided ?? ''), hex(expected)))
+    return json({ code: 'UNAUTHORIZED' }, 401)
+  return null
+}
+
+// housekeeping (cron alternative when pg_cron is unavailable)
 export function housekeepingHandler(d: Deps) {
   return async (req: Request): Promise<Response> => {
-    const token = req.headers.get('x-housekeeping-token') ?? ''
-    const expected = d.cfg.housekeepingToken
-    if (!expected || expected.length < 24) return json({ code: 'NOT_CONFIGURED' }, 503)
-    // compare as hex of the UTF-8 bytes so length leaks nothing beyond "wrong length"
-    const hex = (v: string) =>
-      Array.from(new TextEncoder().encode(v), (b) => b.toString(16).padStart(2, '0')).join('')
-    if (!timingSafeEqualHex(hex(token), hex(expected))) return json({ code: 'UNAUTHORIZED' }, 401)
+    const denied = sharedSecretError(
+      req.headers.get('x-housekeeping-token'),
+      d.cfg.housekeepingToken,
+    )
+    if (denied) return denied
     try {
       return json(await d.db.rpc('svc_housekeeping'))
     } catch (err) {
       const e = toHttpError(err)
       return json({ code: e.code }, e.status)
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// automation: woken by pg_cron + pg_net (app.kick_automation) only when there is work.
+//   1. automatic refunds the hospital's policy allows (svc_claim_auto_refunds)
+//   2. queued SMS/WhatsApp copies of patient alerts (none unless a hospital enables them)
+// Each task is independent: a failure in one is reported without stopping the other.
+// ---------------------------------------------------------------------------
+interface ClaimedRefund {
+  refund_id: string
+  gateway_payment_id: string
+  amount_paise: number
+  idempotency_key: string
+}
+
+interface QueuedMessage {
+  id: string
+  channel: 'SMS' | 'WHATSAPP'
+  kind: string
+  phone: string
+  text: string
+  data: Record<string, unknown>
+}
+
+async function runAutoRefunds(d: Deps, log: (msg: string) => void) {
+  if (!d.cfg.paymentsEnabled || !d.razorpay) return { skipped: 'PAYMENTS_DISABLED' }
+  const claimed = await d.db.rpc<ClaimedRefund[]>('svc_claim_auto_refunds', {
+    p_gateway_mode: d.cfg.razorpayMode,
+    p_limit: 10,
+  })
+  let accepted = 0
+  let failed = 0
+  for (const r of claimed) {
+    try {
+      // The refund's own idempotency key: an administrator retrying later can never refund twice.
+      const rz = await d.razorpay.createRefund({
+        paymentId: r.gateway_payment_id,
+        amount: r.amount_paise,
+        idempotencyKey: r.idempotency_key,
+        notes: { refund_id: r.refund_id, initiated_via: 'AUTO' },
+      })
+      await d.db.rpc('svc_finish_refund_request', {
+        p_refund_id: r.refund_id,
+        p_gateway_refund_id: rz.id,
+        p_gateway_status: rz.status,
+      })
+      accepted += 1
+    } catch (err) {
+      const message = err instanceof GatewayError ? err.message : 'Refund request failed'
+      log(`[automation] refund ${r.refund_id}: ${message}`)
+      // Left FAILED for an administrator (Payments page); automatic runs do not retry it.
+      await d.db.rpc('svc_finish_refund_request', {
+        p_refund_id: r.refund_id,
+        p_gateway_refund_id: null,
+        p_gateway_status: null,
+        p_error: message,
+      })
+      failed += 1
+    }
+  }
+  return { claimed: claimed.length, accepted, failed }
+}
+
+async function runOutboundMessages(d: Deps, log: (msg: string) => void) {
+  const sender = d.messages ?? noProvider
+  const queued = await d.db.rpc<QueuedMessage[]>('svc_claim_outbound_notifications', {
+    p_limit: 20,
+  })
+  let sent = 0
+  for (const m of queued) {
+    let result: SendResult
+    try {
+      result = await sender.send({
+        channel: m.channel,
+        phone: m.phone,
+        kind: m.kind,
+        text: m.text,
+        data: m.data,
+      })
+    } catch {
+      result = { ok: false, error: 'The message provider failed' }
+    }
+    if (result.ok) sent += 1
+    // never log the phone number or text
+    else log(`[automation] message ${m.id} (${m.kind}) not sent: ${result.error}`)
+    await d.db.rpc('svc_finish_outbound_notification', {
+      p_id: m.id,
+      p_ok: result.ok,
+      p_error: result.ok ? null : result.error,
+    })
+  }
+  return { provider: sender.name, claimed: queued.length, sent, failed: queued.length - sent }
+}
+
+export function automationHandler(d: Deps) {
+  const log = d.log ?? console.error
+  const task = async (name: string, run: () => Promise<Record<string, unknown>>) => {
+    try {
+      return await run()
+    } catch (err) {
+      const e = toHttpError(err)
+      log(`[automation] ${name}: ${e.code} ${(err as { message?: string })?.message ?? ''}`)
+      return { error: e.code }
+    }
+  }
+  return async (req: Request): Promise<Response> => {
+    if (req.method !== 'POST') return json({ code: 'METHOD_NOT_ALLOWED' }, 405)
+    const denied = sharedSecretError(req.headers.get('x-automation-token'), d.cfg.automationToken)
+    if (denied) return denied
+    const refunds = await task('refunds', () => runAutoRefunds(d, log))
+    const messages = await task('messages', () => runOutboundMessages(d, log))
+    return json({ refunds, messages })
   }
 }

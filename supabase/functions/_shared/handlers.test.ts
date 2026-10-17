@@ -3,6 +3,7 @@ import { createHmac, randomUUID } from 'node:crypto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   accessTokenAal,
+  automationHandler,
   createOrderHandler,
   createStaffHandler,
   housekeepingHandler,
@@ -13,6 +14,7 @@ import {
   type Deps,
 } from './handlers.ts'
 import { loadConfig } from './http.ts'
+import { createMessageSender, type OutboundMessage } from './messaging.ts'
 import { GatewayError, type RazorpayClient } from './razorpay.ts'
 
 const ORIGIN = 'https://mediqueue.pages.dev'
@@ -645,5 +647,173 @@ describe('housekeeping', () => {
     expect((await call()).status).toBe(401)
     expect((await call('wrong')).status).toBe(401)
     expect((await call('a-very-long-housekeeping-token-123')).status).toBe(200)
+  })
+})
+
+describe('automation (auto refunds + queued SMS)', () => {
+  const TOKEN = 'automation-token-0123456789abcdef'
+  const call = (deps: Deps, token: string | null = TOKEN, method = 'POST') =>
+    automationHandler(deps)(
+      new Request('https://x/automation', {
+        method,
+        headers: token ? { 'x-automation-token': token } : {},
+      }),
+    )
+  const claimed = [
+    {
+      refund_id: 'ref-1',
+      gateway_payment_id: 'pay_1',
+      amount_paise: 5000,
+      idempotency_key: '11111111-1111-4111-8111-111111111111',
+    },
+    {
+      refund_id: 'ref-2',
+      gateway_payment_id: 'pay_2',
+      amount_paise: 2000,
+      idempotency_key: '22222222-2222-4222-8222-222222222222',
+    },
+  ]
+
+  it('requires the shared token and POST', async () => {
+    const { deps, rpc } = makeDeps({ env: { AUTOMATION_TOKEN: TOKEN } })
+    expect((await call(deps, null)).status).toBe(401)
+    expect((await call(deps, 'automation-token-0123456789abcdeX')).status).toBe(401)
+    expect((await call(deps, TOKEN, 'GET')).status).toBe(405)
+    const { deps: unset } = makeDeps()
+    expect((await call(unset)).status).toBe(503)
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('sends claimed refunds to Razorpay with their own idempotency keys', async () => {
+    const finish = vi.fn((a: Record<string, unknown>) => ({ refund_id: a.p_refund_id }))
+    const { deps, razorpay, rpc } = makeDeps({
+      env: { AUTOMATION_TOKEN: TOKEN },
+      rpc: {
+        svc_claim_auto_refunds: () => claimed,
+        svc_finish_refund_request: finish,
+        svc_claim_outbound_notifications: () => [],
+      },
+    })
+    razorpay.createRefund
+      .mockResolvedValueOnce({ id: 'rfnd_1', payment_id: 'pay_1', amount: 5000, status: 'pending' })
+      .mockRejectedValueOnce(new GatewayError(400, 'The amount is invalid'))
+    const res = await call(deps)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      refunds: { claimed: 2, accepted: 1, failed: 1 },
+      messages: { provider: 'none', claimed: 0, sent: 0, failed: 0 },
+    })
+    expect(rpc).toHaveBeenCalledWith('svc_claim_auto_refunds', {
+      p_gateway_mode: 'test',
+      p_limit: 10,
+    })
+    expect(razorpay.createRefund).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentId: 'pay_1',
+        amount: 5000,
+        idempotencyKey: claimed[0]!.idempotency_key,
+      }),
+    )
+    expect(finish).toHaveBeenNthCalledWith(1, {
+      p_refund_id: 'ref-1',
+      p_gateway_refund_id: 'rfnd_1',
+      p_gateway_status: 'pending',
+    })
+    expect(finish).toHaveBeenNthCalledWith(2, {
+      p_refund_id: 'ref-2',
+      p_gateway_refund_id: null,
+      p_gateway_status: null,
+      p_error: 'The amount is invalid',
+    })
+  })
+
+  it('claims nothing while payments are off', async () => {
+    const { deps, rpc } = makeDeps({
+      env: { AUTOMATION_TOKEN: TOKEN, PAYMENTS_ENABLED: 'false' },
+      rpc: { svc_claim_outbound_notifications: () => [] },
+    })
+    const body = await (await call(deps)).json()
+    expect(body.refunds).toEqual({ skipped: 'PAYMENTS_DISABLED' })
+    expect(rpc).not.toHaveBeenCalledWith('svc_claim_auto_refunds', expect.anything())
+  })
+
+  it('without a provider, queued messages are marked failed and nothing is sent', async () => {
+    const finish = vi.fn(() => null)
+    const { deps } = makeDeps({
+      env: { AUTOMATION_TOKEN: TOKEN },
+      rpc: {
+        svc_claim_auto_refunds: () => [],
+        svc_claim_outbound_notifications: () => [
+          {
+            id: 'n-1',
+            channel: 'SMS',
+            kind: 'TURN_NEAR',
+            phone: '9876543210',
+            text: 't',
+            data: {},
+          },
+        ],
+        svc_finish_outbound_notification: finish,
+      },
+    })
+    const body = await (await call(deps)).json()
+    expect(body.messages).toEqual({ provider: 'none', claimed: 1, sent: 0, failed: 1 })
+    expect(finish).toHaveBeenCalledWith({
+      p_id: 'n-1',
+      p_ok: false,
+      p_error: 'No SMS/WhatsApp provider is configured',
+    })
+  })
+
+  it('uses the configured sender and keeps going when one task fails', async () => {
+    const send = vi.fn(async (m: OutboundMessage) =>
+      m.phone === '9876543210' ? ({ ok: true } as const) : ({ ok: false, error: 'DND' } as const),
+    )
+    const finish = vi.fn(() => null)
+    const logged: string[] = []
+    const { deps } = makeDeps({
+      env: { AUTOMATION_TOKEN: TOKEN },
+      rpc: {
+        svc_claim_auto_refunds: () => {
+          throw { message: 'MQ_FORBIDDEN' }
+        },
+        svc_claim_outbound_notifications: () => [
+          {
+            id: 'n-1',
+            channel: 'SMS',
+            kind: 'TURN_NEAR',
+            phone: '9876543210',
+            text: 'a',
+            data: {},
+          },
+          {
+            id: 'n-2',
+            channel: 'SMS',
+            kind: 'VISIT_REMINDER',
+            phone: '9123456789',
+            text: 'b',
+            data: {},
+          },
+        ],
+        svc_finish_outbound_notification: finish,
+      },
+    })
+    deps.messages = { name: 'fake', send }
+    deps.log = (m) => logged.push(m)
+    const body = await (await call(deps)).json()
+    expect(body.refunds).toEqual({ error: 'MQ_FORBIDDEN' })
+    expect(body.messages).toEqual({ provider: 'fake', claimed: 2, sent: 1, failed: 1 })
+    expect(finish).toHaveBeenCalledWith({ p_id: 'n-1', p_ok: true, p_error: null })
+    expect(finish).toHaveBeenCalledWith({ p_id: 'n-2', p_ok: false, p_error: 'DND' })
+    // phone numbers and message text never reach the logs
+    expect(logged.join('\n')).not.toMatch(/9876543210|9123456789/)
+  })
+
+  it('MESSAGE_PROVIDER picks the sender; unknown names send nothing', async () => {
+    expect(createMessageSender(() => undefined).name).toBe('none')
+    const unknown = createMessageSender((k) => (k === 'MESSAGE_PROVIDER' ? 'acme' : undefined))
+    expect(
+      await unknown.send({ channel: 'SMS', phone: '9876543210', kind: 'X', text: 't', data: {} }),
+    ).toEqual({ ok: false, error: 'Unknown MESSAGE_PROVIDER "acme"' })
   })
 })

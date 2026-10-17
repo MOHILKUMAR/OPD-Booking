@@ -8,6 +8,8 @@ export interface Config {
   razorpayKeySecret?: string
   razorpayWebhookSecret?: string
   housekeepingToken?: string
+  /** Shared secret pg_net sends to the automation function (also stored in Supabase Vault). */
+  automationToken?: string
 }
 
 export function loadConfig(get: (name: string) => string | undefined): Config {
@@ -28,6 +30,7 @@ export function loadConfig(get: (name: string) => string | undefined): Config {
     razorpayKeySecret: get('RAZORPAY_KEY_SECRET') || undefined,
     razorpayWebhookSecret: get('RAZORPAY_WEBHOOK_SECRET') || undefined,
     housekeepingToken: get('HOUSEKEEPING_TOKEN') || undefined,
+    automationToken: get('AUTOMATION_TOKEN') || undefined,
   }
 }
 

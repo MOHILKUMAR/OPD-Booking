@@ -83,6 +83,10 @@ verify_jwt = true
 [functions.payments-webhook]
 verify_jwt = false
 
+# Woken by pg_cron + pg_net (app.kick_automation) with x-automation-token; no user JWT.
+[functions.automation]
+verify_jwt = false
+
 # Called by an external scheduler with x-housekeeping-token (only if pg_cron is unavailable).
 [functions.housekeeping]
 verify_jwt = false

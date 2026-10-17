@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { accessTokenAal, type Deps } from './handlers.ts'
 import { loadConfig } from './http.ts'
+import { createMessageSender } from './messaging.ts'
 import { createRazorpayClient } from './razorpay.ts'
 
 export function createDeps(getEnv: (name: string) => string | undefined): Deps {
@@ -57,6 +58,7 @@ export function createDeps(getEnv: (name: string) => string | undefined): Deps {
         return { id: data.user.id }
       },
     },
+    messages: createMessageSender(getEnv),
     razorpay:
       cfg.razorpayKeyId && cfg.razorpayKeySecret
         ? createRazorpayClient({ keyId: cfg.razorpayKeyId, keySecret: cfg.razorpayKeySecret })
