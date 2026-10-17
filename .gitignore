@@ -1,0 +1,34 @@
+# dependencies
+node_modules
+
+# builds and reports
+dist
+dist-ssr
+coverage
+playwright-report
+test-results
+blob-report
+*.tsbuildinfo
+
+# local data
+.local-db
+.pgdata
+supabase/.temp
+supabase/.branches
+
+# secrets: never commit real environment files
+.env
+.env.*
+!.env.example
+supabase/functions/.env
+supabase/functions/.env.*
+!supabase/functions/.env.example
+
+# editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+*.log
+load-results-*.json

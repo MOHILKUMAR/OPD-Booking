@@ -1,0 +1,10 @@
+dist
+node_modules
+coverage
+playwright-report
+test-results
+supabase/.temp
+src/components/ui
+*.sql
+playwright-report
+test-results

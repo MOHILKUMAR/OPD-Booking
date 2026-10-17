@@ -1,0 +1,139 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* Design tokens (shadcn/ui, Tailwind v4). Teal primary, slate neutrals. */
+:root {
+  --radius: 0.625rem;
+  --background: oklch(0.985 0.002 247.8);
+  --foreground: oklch(0.21 0.034 264.7);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.034 264.7);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.034 264.7);
+  --primary: oklch(0.511 0.096 186.4);
+  --primary-foreground: oklch(0.985 0.014 180.7);
+  --secondary: oklch(0.967 0.003 264.5);
+  --secondary-foreground: oklch(0.21 0.034 264.7);
+  --muted: oklch(0.967 0.003 264.5);
+  --muted-foreground: oklch(0.446 0.03 256.8);
+  --accent: oklch(0.953 0.051 180.8);
+  --accent-foreground: oklch(0.386 0.063 188.4);
+  --destructive: oklch(0.577 0.245 27.3);
+  --success: oklch(0.527 0.137 150.1);
+  --warning: oklch(0.666 0.157 58.3);
+  --border: oklch(0.928 0.006 264.5);
+  --input: oklch(0.928 0.006 264.5);
+  --ring: oklch(0.6 0.104 184.7);
+  --chart-1: oklch(0.6 0.118 184.7);
+  --chart-2: oklch(0.546 0.245 262.9);
+  --chart-3: oklch(0.769 0.188 70.1);
+  --chart-4: oklch(0.645 0.246 16.4);
+  --chart-5: oklch(0.627 0.265 303.9);
+  /* validated single-series data colour (dataviz validator: light surface #ffffff) */
+  --series-1: #0d9488;
+}
+
+.dark {
+  --background: oklch(0.13 0.028 261.7);
+  --foreground: oklch(0.985 0.002 247.8);
+  --card: oklch(0.21 0.034 264.7);
+  --card-foreground: oklch(0.985 0.002 247.8);
+  --popover: oklch(0.21 0.034 264.7);
+  --popover-foreground: oklch(0.985 0.002 247.8);
+  --primary: oklch(0.704 0.123 182.5);
+  --primary-foreground: oklch(0.21 0.034 264.7);
+  --secondary: oklch(0.278 0.033 256.8);
+  --secondary-foreground: oklch(0.985 0.002 247.8);
+  --muted: oklch(0.278 0.033 256.8);
+  --muted-foreground: oklch(0.707 0.022 261.3);
+  --accent: oklch(0.278 0.033 256.8);
+  --accent-foreground: oklch(0.985 0.002 247.8);
+  --destructive: oklch(0.704 0.191 22.2);
+  --success: oklch(0.723 0.192 149.6);
+  --warning: oklch(0.795 0.162 70.1);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.6 0.104 184.7);
+  --chart-1: oklch(0.704 0.123 182.5);
+  --chart-2: oklch(0.623 0.214 259.8);
+  --chart-3: oklch(0.795 0.184 86);
+  --chart-4: oklch(0.712 0.194 13.4);
+  --chart-5: oklch(0.714 0.203 305.5);
+  --series-1: #0f9d8f;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-series-1: var(--series-1);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family:
+      'Inter',
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      'Noto Sans',
+      sans-serif;
+  }
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .print-slip,
+    .print-slip * {
+      visibility: visible;
+    }
+    .print-slip {
+      position: absolute;
+      inset: 0 auto auto 0;
+      border: none;
+    }
+    .print-slip button {
+      display: none;
+    }
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}

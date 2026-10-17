@@ -1,0 +1,88 @@
+# Supabase CLI configuration (local development and `supabase functions deploy`).
+# Hosted-project Auth settings must also be set in the dashboard: see docs/deployment.md.
+project_id = "mediqueue"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 200
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+enable_signup = true
+# Patients book with an anonymous session (no PII, no OTP cost). Enable Turnstile in production
+# (see [auth.captcha] below).
+enable_anonymous_sign_ins = true
+
+[auth.email]
+enable_signup = true
+# Local development only. In production use custom SMTP and turn confirmations on.
+enable_confirmations = false
+secure_password_change = true
+
+[auth.rate_limit]
+anonymous_users = 30
+sign_in_sign_ups = 30
+
+# Cloudflare Turnstile on anonymous and password sign-ins. Set VITE_TURNSTILE_SITE_KEY in the
+# frontend first, or sign-ins fail. Cloudflare's test secret 1x0000000000000000000000000000000AA
+# always passes.
+# [auth.captcha]
+# enabled = true
+# provider = "turnstile"
+# secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
+
+# Staff two-factor authentication with an authenticator app (TOTP, free). Opt-in per account
+# from the 2FA button in the staff header.
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+
+# Browser-facing functions: the gateway verifies the user's JWT, and the function verifies it again.
+[functions.payments-create-order]
+verify_jwt = true
+
+[functions.payments-verify]
+verify_jwt = true
+
+[functions.payments-refund]
+verify_jwt = true
+
+[functions.admin-create-staff]
+verify_jwt = true
+
+# Razorpay cannot send a Supabase JWT; the handler verifies X-Razorpay-Signature instead.
+[functions.payments-webhook]
+verify_jwt = false
+
+# Called by an external scheduler with x-housekeeping-token (only if pg_cron is unavailable).
+[functions.housekeeping]
+verify_jwt = false
