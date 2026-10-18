@@ -14,16 +14,16 @@ Deployed 2026-10-18 and checked end to end against the live backend: anonymous b
 refusal, tracking with and without the key, masked identity, PII-free TV board, cancellation, and
 the Realtime websocket.
 
-| Piece            | Value                                                                                                                                                                                                     |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Site             | https://mediqueue-5b5.pages.dev (Cloudflare Pages project `mediqueue`, direct upload from `dist/`)                                                                                                        |
-| Supabase project | `mediqueue_OPD`, ref `aoeejxunlbidgmyihmha`, region **ap-southeast-1 (Singapore)**                                                                                                                        |
-| Data             | `supabase/seed.sql` demo hospital (`demo-hospital`) and fictional doctors                                                                                                                                 |
-| Auth             | anonymous sign-ins on, email confirmation off (no SMTP), site URL = the Pages URL                                                                                                                         |
-| Edge Functions   | `admin-create-staff`, `payments-*` with Razorpay **test** keys (`PAYMENTS_ENABLED=true`, `RAZORPAY_MODE=test`), `automation` (`AUTOMATION_TOKEN` set; no `MESSAGE_PROVIDER`); `housekeeping` not deployed |
-| Scheduled jobs   | pg_cron `mediqueue-housekeeping` every 10 minutes; `mediqueue-automation` every minute (visit reminders, pg_net wake-up; Vault secrets set)                                                               |
-| Frontend env     | `VITE_APP_ENV=staging` (demo banner on), `VITE_PAYMENTS_ENABLED=true`, no Turnstile key                                                                                                                   |
-| Payments         | hospital online payments on; ₹10 test fee on Dr. Vikram Iyer's Morning OPD, ₹50 on Dr. Arjun Mehta's Afternoon OPD                                                                                        |
+| Piece            | Value                                                                                                                                                                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Site             | https://mediqueue-5b5.pages.dev (Cloudflare Pages project `mediqueue`, direct upload from `dist/`)                                                                                                                                                      |
+| Supabase project | `mediqueue_OPD`, ref `aoeejxunlbidgmyihmha`, region **ap-southeast-1 (Singapore)**                                                                                                                                                                      |
+| Data             | `supabase/seed.sql` demo hospital (`demo-hospital`) and fictional doctors                                                                                                                                                                               |
+| Auth             | anonymous sign-ins on, email confirmation off (no SMTP), site URL = the Pages URL                                                                                                                                                                       |
+| Edge Functions   | `admin-create-staff`, `payments-*` with Razorpay **test** keys (`PAYMENTS_ENABLED=true`, `RAZORPAY_MODE=test`), `automation` (`AUTOMATION_TOKEN` set; no `MESSAGE_PROVIDER`), `whatsapp-webhook` (no WhatsApp secrets yet); `housekeeping` not deployed |
+| Scheduled jobs   | pg_cron `mediqueue-housekeeping` every 10 minutes; `mediqueue-automation` every minute (visit reminders, pg_net wake-up; Vault secrets set)                                                                                                             |
+| Frontend env     | `VITE_APP_ENV=staging` (demo banner on), `VITE_PAYMENTS_ENABLED=true`, no Turnstile key                                                                                                                                                                 |
+| Payments         | hospital online payments on; ₹10 test fee on Dr. Vikram Iyer's Morning OPD, ₹50 on Dr. Arjun Mehta's Afternoon OPD                                                                                                                                      |
 
 To redeploy the frontend after a change, build with the same `VITE_*` values and run
 `npx wrangler pages deploy dist --project-name mediqueue --branch main`.
