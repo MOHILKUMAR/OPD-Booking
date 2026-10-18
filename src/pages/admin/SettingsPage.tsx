@@ -82,6 +82,10 @@ const messages = defineMessages({
     smsTitle: 'Paid service: needs a provider before it does anything',
     smsBody:
       'SMS in India costs about ₹0.15–0.30 per message and needs DLT registration and approved templates. Until an SMS provider is set up on the server (MESSAGE_PROVIDER), queued messages are not sent and are marked failed. Leave this off unless the provider and its cost are approved.',
+    whatsappAlerts: 'Offer WhatsApp updates to patients',
+    whatsappTitle: 'Paid service: Meta charges per message',
+    whatsappBody:
+      'Patients who opt in on their tracking page get a WhatsApp message when their turn is near and before their visit (2 approved templates, English and Hindi). Meta charges about ₹0.12–0.15 per message, plus any reseller fee; check Meta’s current India pricing. Nothing is sent until the WhatsApp secrets are set on the server (docs/deployment.md). Patients can stop at any time on the tracking page or by replying STOP. Leave this off unless the cost is approved.',
 
     'v.pinCode': '6-digit PIN code',
     'v.email': 'Invalid email',
@@ -153,6 +157,10 @@ const messages = defineMessages({
     smsTitle: 'सशुल्क सेवा: प्रदाता सेट होने से पहले यह कुछ नहीं करती',
     smsBody:
       'भारत में SMS का ख़र्च लगभग ₹0.15–0.30 प्रति संदेश है, और इसके लिए DLT पंजीकरण और स्वीकृत टेम्पलेट ज़रूरी हैं। जब तक सर्वर पर SMS प्रदाता (MESSAGE_PROVIDER) सेट नहीं होता, भेजने के लिए रखे गए संदेश नहीं भेजे जाते और विफल दर्ज होते हैं। जब तक प्रदाता और उसका ख़र्च स्वीकृत न हो, इसे बंद ही रखें।',
+    whatsappAlerts: 'मरीज़ों को WhatsApp अपडेट का विकल्प दें',
+    whatsappTitle: 'सशुल्क सेवा: Meta हर संदेश का शुल्क लेता है',
+    whatsappBody:
+      'जो मरीज़ अपने ट्रैकिंग पेज पर सहमति देते हैं, उन्हें बारी नज़दीक आने पर और आने से पहले WhatsApp संदेश मिलता है (2 स्वीकृत टेम्पलेट, अंग्रेज़ी और हिन्दी)। Meta लगभग ₹0.12–0.15 प्रति संदेश लेता है, साथ में किसी रीसेलर का शुल्क भी हो सकता है; भारत के लिए Meta की मौजूदा दरें देख लें। जब तक सर्वर पर WhatsApp सीक्रेट सेट नहीं होते (docs/deployment.md), कोई संदेश नहीं भेजा जाता। मरीज़ ट्रैकिंग पेज पर या STOP लिखकर कभी भी इन्हें बंद कर सकते हैं। जब तक ख़र्च स्वीकृत न हो, इसे बंद ही रखें।',
 
     'v.pinCode': '6 अंकों का पिन कोड',
     'v.email': 'ईमेल सही नहीं है',
@@ -244,6 +252,7 @@ const schema = z.object({
   turn_alert_ahead: z.coerce.number().int().min(0).max(20),
   visit_reminder_minutes: z.coerce.number().int().min(0).max(1440),
   sms_alerts_enabled: z.boolean(),
+  whatsapp_alerts_enabled: z.boolean(),
 })
 
 export default function SettingsPage() {
@@ -289,6 +298,7 @@ export default function SettingsPage() {
       turn_alert_ahead: h.turn_alert_ahead,
       visit_reminder_minutes: h.visit_reminder_minutes,
       sms_alerts_enabled: h.sms_alerts_enabled,
+      whatsapp_alerts_enabled: h.whatsapp_alerts_enabled,
     })
   }, [hospital.data, form])
 
@@ -327,7 +337,8 @@ export default function SettingsPage() {
       | 'require_patient_age'
       | 'online_payments_enabled'
       | 'auto_refund_enabled'
-      | 'sms_alerts_enabled',
+      | 'sms_alerts_enabled'
+      | 'whatsapp_alerts_enabled',
     label: string,
   ) => (
     <Controller
@@ -479,6 +490,15 @@ export default function SettingsPage() {
               <AlertTitle>{t('smsTitle')}</AlertTitle>
               <AlertDescription>
                 <p>{t('smsBody')}</p>
+              </AlertDescription>
+            </Alert>
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            {toggle('whatsapp_alerts_enabled', t('whatsappAlerts'))}
+            <Alert>
+              <AlertTitle>{t('whatsappTitle')}</AlertTitle>
+              <AlertDescription>
+                <p>{t('whatsappBody')}</p>
               </AlertDescription>
             </Alert>
           </div>

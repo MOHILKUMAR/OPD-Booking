@@ -42,6 +42,7 @@ const ERRORS_HI: Record<string, string> = {
   MQ_SHIFT_NOT_FOUND: 'यह ओपीडी शिफ़्ट मौजूद नहीं है।',
   MQ_SHIFT_OVERLAP: 'यह शिफ़्ट उसी दिन की दूसरी शिफ़्ट से टकराती है।',
   MQ_LAST_ADMIN: 'आख़िरी एडमिन को हटाया नहीं जा सकता।',
+  MQ_WHATSAPP_UNAVAILABLE: 'इस बुकिंग के लिए WhatsApp अपडेट उपलब्ध नहीं हैं।',
   MQ_REFUND_NOT_POSSIBLE: 'इस बुकिंग के लिए रिफ़ंड योग्य कोई भुगतान नहीं है।',
   MQ_INVALID_DOCTOR: 'डॉक्टर सही नहीं है।',
   MQ_INVALID_DEPARTMENT: 'विभाग सही नहीं है।',

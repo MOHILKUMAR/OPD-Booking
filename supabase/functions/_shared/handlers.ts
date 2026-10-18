@@ -11,6 +11,7 @@ import {
 } from './http.ts'
 import {
   GatewayError,
+  hmacSha256Hex,
   timingSafeEqualHex,
   verifyPaymentSignature,
   verifyWebhookSignature,
@@ -496,6 +497,8 @@ interface QueuedMessage {
   phone: string
   text: string
   data: Record<string, unknown>
+  language?: 'en' | 'hi'
+  hospital?: string
 }
 
 async function runAutoRefunds(d: Deps, log: (msg: string) => void) {
@@ -552,6 +555,8 @@ async function runOutboundMessages(d: Deps, log: (msg: string) => void) {
         kind: m.kind,
         text: m.text,
         data: m.data,
+        language: m.language,
+        hospital: m.hospital,
       })
     } catch {
       result = { ok: false, error: 'The message provider failed' }
@@ -563,6 +568,7 @@ async function runOutboundMessages(d: Deps, log: (msg: string) => void) {
       p_id: m.id,
       p_ok: result.ok,
       p_error: result.ok ? null : result.error,
+      p_provider_id: result.ok ? (result.id ?? null) : null,
     })
   }
   return { provider: sender.name, claimed: queued.length, sent, failed: queued.length - sent }
@@ -586,5 +592,101 @@ export function automationHandler(d: Deps) {
     const refunds = await task('refunds', () => runAutoRefunds(d, log))
     const messages = await task('messages', () => runOutboundMessages(d, log))
     return json({ refunds, messages })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// whatsapp-webhook (Meta): subscription check, STOP replies, failed deliveries
+// ---------------------------------------------------------------------------
+interface WhatsAppWebhookPayload {
+  entry?: {
+    changes?: {
+      field?: string
+      value?: {
+        messages?: {
+          from?: string
+          type?: string
+          text?: { body?: string }
+          button?: { text?: string }
+          interactive?: { button_reply?: { title?: string } }
+        }[]
+        statuses?: { id?: string; status?: string; errors?: { code?: number; title?: string }[] }[]
+      }
+    }[]
+  }[]
+}
+
+/** Replies that withdraw WhatsApp consent (English and Hindi). */
+export const STOP_WORDS = /^\s*(stop|unsubscribe|रोकें|रोको|बंद करें|बंद)\s*[.!।]?\s*$/i
+
+export function whatsappWebhookHandler(d: Deps) {
+  const log = d.log ?? console.error
+  return async (req: Request): Promise<Response> => {
+    if (req.method === 'GET') {
+      // Meta's one-time subscription check: echo hub.challenge for the right verify token
+      const verifyToken = d.cfg.whatsappVerifyToken
+      if (!verifyToken) return json({ code: 'NOT_CONFIGURED' }, 503)
+      const url = new URL(req.url)
+      const hex = (v: string) =>
+        Array.from(new TextEncoder().encode(v), (b) => b.toString(16).padStart(2, '0')).join('')
+      const given = url.searchParams.get('hub.verify_token') ?? ''
+      if (
+        url.searchParams.get('hub.mode') === 'subscribe' &&
+        timingSafeEqualHex(hex(given), hex(verifyToken))
+      ) {
+        return new Response(url.searchParams.get('hub.challenge') ?? '', {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain' },
+        })
+      }
+      return json({ code: 'FORBIDDEN' }, 403)
+    }
+    if (req.method !== 'POST') return json({ code: 'METHOD_NOT_ALLOWED' }, 405)
+    const appSecret = d.cfg.whatsappAppSecret
+    if (!appSecret) return json({ code: 'NOT_CONFIGURED' }, 503)
+
+    const raw = await req.text()
+    if (raw.length > 1_000_000) return json({ code: 'PAYLOAD_TOO_LARGE' }, 413)
+    const signature = (req.headers.get('x-hub-signature-256') ?? '').trim().toLowerCase()
+    const expected = await hmacSha256Hex(appSecret, raw)
+    if (!signature.startsWith('sha256=') || !timingSafeEqualHex(signature.slice(7), expected))
+      return json({ code: 'INVALID_SIGNATURE' }, 401)
+
+    let body: WhatsAppWebhookPayload
+    try {
+      body = JSON.parse(raw) as WhatsAppWebhookPayload
+    } catch {
+      return json({ code: 'INVALID_JSON' }, 400)
+    }
+    let optOuts = 0
+    let failures = 0
+    try {
+      for (const entry of body.entry ?? []) {
+        for (const change of entry.changes ?? []) {
+          if (change.field !== 'messages' || !change.value) continue
+          for (const m of change.value.messages ?? []) {
+            const text = m.text?.body ?? m.button?.text ?? m.interactive?.button_reply?.title ?? ''
+            if (m.from && STOP_WORDS.test(text)) {
+              optOuts += await d.db.rpc<number>('svc_whatsapp_opt_out', { p_phone: m.from })
+            }
+          }
+          for (const st of change.value.statuses ?? []) {
+            if (st.status !== 'failed' || !st.id) continue
+            const e = st.errors?.[0]
+            await d.db.rpc('svc_record_message_status', {
+              p_provider_message_id: st.id,
+              p_status: 'failed',
+              p_error: e ? `${e.code ?? ''} ${e.title ?? ''}`.trim() : null,
+            })
+            failures += 1
+          }
+        }
+      }
+    } catch (err) {
+      // 5xx: Meta retries the delivery
+      log(`[whatsapp-webhook] ${(err as { message?: string })?.message ?? String(err)}`)
+      return json({ code: 'RETRY_LATER' }, 500)
+    }
+    return json({ ok: true, opt_outs: optOuts, failures })
   }
 }

@@ -72,8 +72,11 @@ Legend: ✅ done and tested · 🟡 done, needs a hosted project to verify · �
   `automation` Edge Function through pg_net only when there is work; failures stay for an admin
 - ✅ Patient alerts: "your turn is near", delay notices and visit reminders as free in-app
   notifications, shown as browser notifications while the tracking page is open
-- 🟡 SMS/WhatsApp copies of alerts: queue, dispatcher and `MessageSender` adapter built; off by
-  default (`hospitals.sms_alerts_enabled`, `MESSAGE_PROVIDER`); no paid provider wired
+- ✅ WhatsApp alerts (paid, off by default): per-booking patient opt-in on the tracking page,
+  WhatsApp Cloud API sender with approved English/Hindi templates, STOP and failed-delivery
+  webhook; needs the Meta setup in deployment.md §9 and the Settings switch
+- 🟡 SMS copies of alerts: queue, dispatcher and `MessageSender` adapter built; off by default
+  (`hospitals.sms_alerts_enabled`, `MESSAGE_PROVIDER`); no SMS provider wired
 - ⬜ Alerts while the browser is closed (Web Push, free) — not built
 
 ## SMS/WhatsApp provider interface
@@ -97,6 +100,7 @@ interface MessageSender {
 }
 ```
 
-No provider ships. Each costs money per message (about ₹0.15–0.30 per SMS) and needs DLT
+The WhatsApp Cloud API sender ships (`whatsappCloudSender`, active with the `WHATSAPP_*`
+secrets). No SMS provider ships. Each costs money per message (about ₹0.15–0.30 per SMS) and needs DLT
 registration and approved templates in India, so add one only after the provider and its cost
 are approved; until then queued copies are marked FAILED and nothing is sent.

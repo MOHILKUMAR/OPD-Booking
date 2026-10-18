@@ -10,6 +10,9 @@ export interface Config {
   housekeepingToken?: string
   /** Shared secret pg_net sends to the automation function (also stored in Supabase Vault). */
   automationToken?: string
+  /** Meta webhook: verify token for the subscription check and the app secret for signatures. */
+  whatsappVerifyToken?: string
+  whatsappAppSecret?: string
 }
 
 export function loadConfig(get: (name: string) => string | undefined): Config {
@@ -31,6 +34,8 @@ export function loadConfig(get: (name: string) => string | undefined): Config {
     razorpayWebhookSecret: get('RAZORPAY_WEBHOOK_SECRET') || undefined,
     housekeepingToken: get('HOUSEKEEPING_TOKEN') || undefined,
     automationToken: get('AUTOMATION_TOKEN') || undefined,
+    whatsappVerifyToken: get('WHATSAPP_VERIFY_TOKEN') || undefined,
+    whatsappAppSecret: get('WHATSAPP_APP_SECRET') || undefined,
   }
 }
 

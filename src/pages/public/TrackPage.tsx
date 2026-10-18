@@ -28,6 +28,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { WhatsAppUpdatesCard } from '@/components/whatsapp-updates'
 import { useAlertSettings, useAnnounceNotifications } from '@/hooks/useBookingAlerts'
 import { LIVE_POLL_MS, useLiveQueue } from '@/hooks/useLiveQueue'
 import { defineMessages, useT } from '@/i18n'
@@ -252,6 +253,9 @@ function LiveTrackView({
       <TokenHero booking={data} />
       <QueueProgress booking={data} />
       {ALERTABLE.includes(data.status) && <BookingAlertsCard alerts={alerts} />}
+      {(ALERTABLE.includes(data.status) || data.whatsapp?.enabled) && (
+        <WhatsAppUpdatesCard booking={data} accessKey={accessKey} />
+      )}
       <NotificationsList booking={data} />
       <BookingDetails booking={data} />
 

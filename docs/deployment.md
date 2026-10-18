@@ -251,3 +251,58 @@ Online payment stays **off** until three switches are on:
   restore the dump into a new project (see [operations.md](operations.md)).
 - **Payments:** set `PAYMENTS_ENABLED=false` (function secret) to stop online payment immediately.
   Existing paid bookings are unaffected.
+
+## 9. WhatsApp alerts (paid, optional)
+
+Patients who opt in on their tracking page get a WhatsApp message when their turn is near and
+before their visit. Everything is built; it stays silent until all three switches are on: the
+WhatsApp secrets (below), **Settings → Patient alerts → Offer WhatsApp updates**, and the
+patient's own opt-in. Patients stop it on the tracking page or by replying STOP.
+
+**Cost:** Meta charges per delivered template message (utility category, India: roughly
+₹0.12–0.15; check Meta's current pricing), plus a monthly/markup fee if you use a reseller
+(Gupshup, Interakt, AiSensy, Wati…). Example: 600 messages a day ≈ ₹2,000–2,700 a month. No DLT
+registration is needed for WhatsApp.
+
+1. **Meta Business account** at business.facebook.com; verify the business (GST or registration
+   documents) to raise sending limits.
+2. **developers.facebook.com → Create app → Business → add WhatsApp.** The API Setup page gives a
+   free test number that can message up to 5 phone numbers you add, enough for the demo. For real
+   use, add the hospital's number (it cannot stay on the WhatsApp app) and get the display name
+   approved.
+3. **Templates** (WhatsApp Manager → Message templates → Create, category **Utility**). Create each
+   in **English (en)** and **Hindi (hi)** with exactly these names and four body variables:
+
+   `mediqueue_turn_near`
+   - en: `Hello from {{1}}. Token {{2}}: your turn is near, {{3}} patient(s) ahead of you. Please wait near {{4}}.`
+   - hi: `नमस्ते, {{1}} से संदेश। टोकन {{2}}: आपकी बारी नज़दीक है, आपसे आगे {{3}} मरीज़ हैं। कृपया {{4}} के पास प्रतीक्षा करें।`
+
+   `mediqueue_visit_reminder`
+   - en: `Reminder from {{1}}: token {{2}} with {{3}} at {{4}}. Please arrive a little early and check in at reception.`
+   - hi: `याद दिलाना ({{1}}): {{3}} के साथ टोकन {{2}}, समय {{4}}। कृपया थोड़ा पहले आएँ और रिसेप्शन पर चेक-इन करें।`
+
+   Footer (both): `Reply STOP to stop these messages.` / `ये संदेश बंद करने के लिए STOP लिखें।`
+   Variables: {{1}} hospital name, {{2}} token, {{3}} patients ahead or doctor (room), {{4}} doctor
+   (room) or start time. Other names can be set with `WHATSAPP_TEMPLATE_TURN_NEAR` /
+   `WHATSAPP_TEMPLATE_VISIT_REMINDER`.
+
+4. **Permanent token:** Business settings → System users → add an admin system user → assign the
+   app and the WhatsApp account → Generate token with `whatsapp_business_messaging` and
+   `whatsapp_business_management`. Note the **Phone number ID** (API Setup) and the **App
+   secret** (App settings → Basic).
+5. In your own terminal (values are typed hidden; never paste them into chat):
+
+   ```bash
+   node scripts/set-whatsapp-secrets.mjs
+   ```
+
+   It saves `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET` and a
+   generated `WHATSAPP_VERIFY_TOKEN`, then prints the webhook callback URL and verify token.
+
+6. **Webhook:** WhatsApp → Configuration → Webhook → Edit: paste the callback URL
+   (`https://<project-ref>.supabase.co/functions/v1/whatsapp-webhook`) and verify token, then
+   subscribe to **messages**. Deploy the function first:
+   `npx supabase@latest functions deploy whatsapp-webhook --no-verify-jwt`.
+7. Turn on **Offer WhatsApp updates** in Settings, opt in from a test booking's tracking page
+   (with the test number, use one of your 5 registered phones), and open the session in the
+   queue console: the "turn near" message should arrive within about a minute.

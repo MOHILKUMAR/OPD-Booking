@@ -61,6 +61,8 @@ export interface Hospital {
   visit_reminder_minutes: number
   /** Queue SMS copies of alerts (needs a paid provider; off by default). */
   sms_alerts_enabled: boolean
+  /** Offer WhatsApp copies of alerts to patients who opt in (paid; off by default). */
+  whatsapp_alerts_enabled: boolean
   is_active: boolean
 }
 
@@ -261,6 +263,8 @@ export interface BookingView {
   can_cancel: boolean
   cancel_block_reason: string | null
   notifications: BookingNotification[]
+  /** WhatsApp updates: offered by the hospital, and this booking's opt-in. */
+  whatsapp?: { available: boolean; enabled: boolean; language: 'en' | 'hi' }
 }
 
 /** In-app notification on a booking. `data` holds template values for translated display. */

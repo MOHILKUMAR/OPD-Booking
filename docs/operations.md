@@ -91,6 +91,9 @@ below).
   reminder before the OPD starts (0 = off). They are free and appear on the tracking page and My
   bookings, and as browser notifications while the tracking page is open (after the patient
   allows them). Phones may pause a background page after some minutes, so alerts are best effort.
+- **WhatsApp alerts** (paid): offered only after the Meta setup in deployment.md §9 and the
+  Settings switch; each patient opts in per booking and can stop with STOP. Failed deliveries are
+  marked on the notification (`error`); watch the Meta dashboard for quality rating and spend.
 - **SMS alerts** stay off. Turning them on only queues copies; nothing is sent until a paid
   provider is added (`MESSAGE_PROVIDER`) after its cost and DLT templates are approved.
 

@@ -137,3 +137,20 @@ export function parseTrackingInput(
     key: hashIndex >= 0 ? keyFromHash(text.slice(hashIndex)) : null,
   }
 }
+
+/** Patient opt-in/out for WhatsApp updates on one booking (booking holder only). */
+export async function setWhatsappAlerts(
+  reference: string,
+  accessKey: string | null,
+  enabled: boolean,
+  language: 'en' | 'hi',
+): Promise<{ enabled: boolean; language: 'en' | 'hi' }> {
+  return unwrap(
+    await supabase.rpc('set_whatsapp_alerts', {
+      p_booking_reference: reference,
+      p_access_key: accessKey,
+      p_enabled: enabled,
+      p_language: language,
+    }),
+  ) as { enabled: boolean; language: 'en' | 'hi' }
+}

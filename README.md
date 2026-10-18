@@ -5,7 +5,8 @@ a token for today or tomorrow, and watch the queue live so they arrive near thei
 the queue (check-in, call next, consultation, skip/recall, walk-ins), admins manage doctors,
 schedules, holidays, announcements, staff and refunds, and a waiting-room TV shows "now serving".
 The whole interface works in English and Hindi. Patients get "your turn is near", delay and
-reminder alerts (free, in the app and as browser notifications), admins download CSV reports,
+reminder alerts (free, in the app and as browser notifications, plus optional paid WhatsApp
+messages for patients who opt in), admins download CSV reports,
 and cancelled paid bookings can be refunded automatically.
 
 **Stack:** React 19 · Vite 8 · TypeScript (strict) · Tailwind 4 · shadcn/ui · React Router ·

@@ -65,6 +65,7 @@ with your authenticator code." The patient payment functions do not ask for a co
 | Report exports (CSV); patient details on explicit opt-in   |         ❌         |        ❌        |      ❌      |               ❌               |       ✅ (audited)        |
 | Automatic refund policy and limit, patient alert settings  |         ❌         |        ❌        |      ❌      |               ❌               |            ✅             |
 | Alerts about a booking (turn near, delay, reminders)       |     key holder     | own + key holder |      —       |               —                |             —             |
+| WhatsApp updates opt-in / opt-out for a booking            |     key holder     | own + key holder |      —       |               —                |             —             |
 | Staff accounts and roles                                   |         ❌         |        ❌        |      ❌      |               ❌               | ✅ (last admin protected) |
 | Direct writes to appointments / queue_states / payments    |         ❌         |        ❌        |      ❌      |               ❌               |    ❌ (functions only)    |
 | `svc_*` functions (payments, automatic refunds, SMS queue) |         ❌         |        ❌        |      ❌      |               ❌               |  ❌ (service role only)   |

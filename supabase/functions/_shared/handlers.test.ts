@@ -762,6 +762,7 @@ describe('automation (auto refunds + queued SMS)', () => {
       p_id: 'n-1',
       p_ok: false,
       p_error: 'No SMS/WhatsApp provider is configured',
+      p_provider_id: null,
     })
   })
 
@@ -803,8 +804,18 @@ describe('automation (auto refunds + queued SMS)', () => {
     const body = await (await call(deps)).json()
     expect(body.refunds).toEqual({ error: 'MQ_FORBIDDEN' })
     expect(body.messages).toEqual({ provider: 'fake', claimed: 2, sent: 1, failed: 1 })
-    expect(finish).toHaveBeenCalledWith({ p_id: 'n-1', p_ok: true, p_error: null })
-    expect(finish).toHaveBeenCalledWith({ p_id: 'n-2', p_ok: false, p_error: 'DND' })
+    expect(finish).toHaveBeenCalledWith({
+      p_id: 'n-1',
+      p_ok: true,
+      p_error: null,
+      p_provider_id: null,
+    })
+    expect(finish).toHaveBeenCalledWith({
+      p_id: 'n-2',
+      p_ok: false,
+      p_error: 'DND',
+      p_provider_id: null,
+    })
     // phone numbers and message text never reach the logs
     expect(logged.join('\n')).not.toMatch(/9876543210|9123456789/)
   })

@@ -87,6 +87,10 @@ verify_jwt = false
 [functions.automation]
 verify_jwt = false
 
+# Meta WhatsApp webhook: verify token (GET) and X-Hub-Signature-256 (POST); no user JWT.
+[functions.whatsapp-webhook]
+verify_jwt = false
+
 # Called by an external scheduler with x-housekeeping-token (only if pg_cron is unavailable).
 [functions.housekeeping]
 verify_jwt = false
