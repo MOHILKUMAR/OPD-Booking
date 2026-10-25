@@ -61,6 +61,16 @@ Supabase project (or at least separate secrets) for production.
 Read only by `app.kick_automation()` (pg_cron, every minute). Without them it returns
 `NOT_CONFIGURED` and refund requests wait for an administrator as before.
 
+## GitHub Actions secrets (nightly backup, `gh secret set …`)
+
+| Name                   | Notes                                                                                                 |
+| ---------------------- | ----------------------------------------------------------------------------------------------------- |
+| `SUPABASE_DB_URL`      | **Secret.** Session pooler connection string with the database password (port 5432)                   |
+| `BACKUP_AGE_RECIPIENT` | age **public** key (`age1…`). The private key stays offline with the owner and is never stored in CI. |
+
+Used only by `.github/workflows/db-backup.yml`; setup in
+[operations.md](operations.md#backups-the-free-tier-has-none).
+
 The interface language needs no configuration: the switch in the header remembers each
 visitor's choice, and `?lang=hi` (or `?lang=en`) in a link opens a page in that language, e.g.
 `/display?lang=hi` for a Hindi waiting-room TV.

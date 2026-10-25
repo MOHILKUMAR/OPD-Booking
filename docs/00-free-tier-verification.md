@@ -86,8 +86,8 @@ anonymous and password sign-ins (`captchaToken`).
 - **Email:** built-in SMTP cannot send patient emails. MediQueue does not depend on email.
 - **Anonymous sign-in limit (30/hour/IP):** a hospital kiosk or shared Wi-Fi behind one NAT IP can
   hit it. Raise the limit in Auth settings and enable Turnstile before go-live.
-- **No backups on Free:** schedule `pg_dump` exports (see [operations.md](operations.md)) or move to
-  a paid plan before storing real patient data.
+- **No backups on Free:** the nightly encrypted backup workflow covers this for a pilot (see
+  [operations.md](operations.md)); move to a paid plan before full-scale use with real patients.
 - **Project pausing after 7 days idle** makes the free tier unsuitable for a live hospital service.
 
 **Conclusion:** the free tier is suitable for development, demos and a supervised pilot with

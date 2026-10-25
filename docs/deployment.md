@@ -245,10 +245,10 @@ Online payment stays **off** until three switches are on:
 - **Frontend:** Cloudflare Pages → Deployments → choose the previous deployment → **Rollback**.
   This is instant and has no data impact.
 - **Edge Functions:** redeploy from the previous Git tag (`git checkout <tag> && npx supabase functions deploy …`).
-- **Database:** migrations are forward-only. Before every `db push`, take a dump:
-  `npx supabase@latest db dump --linked -f backup-$(date +%F).sql` (schema) plus `--data-only`
-  (data). To undo a change, write a new migration that reverts it and push it. To recover data,
-  restore the dump into a new project (see [operations.md](operations.md)).
+- **Database:** migrations are forward-only. Before every `db push`, run the encrypted backup
+  (`gh workflow run db-backup.yml --repo MOHILKUMAR/OPD-Booking`) and wait for it to finish green.
+  To undo a change, write a new migration that reverts it and push it. To recover data, restore
+  the dump into a new project (see [operations.md](operations.md#backups-the-free-tier-has-none)).
 - **Payments:** set `PAYMENTS_ENABLED=false` (function secret) to stop online payment immediately.
   Existing paid bookings are unaffected.
 

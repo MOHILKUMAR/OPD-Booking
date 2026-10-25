@@ -1,0 +1,164 @@
+# Nightly encrypted backup of the live Supabase database (the Free plan has no backups).
+# Dumps the schema and the data with the Supabase CLI, encrypts both with age to the owner's
+# public key and uploads only the .age files. This repository is public: run logs and artifacts
+# are visible to anyone with a GitHub account, so no step may print data, sizes or row counts.
+# Setup, manual runs and the monthly restore drill: docs/operations.md → Backups.
+name: Database backup
+
+on:
+  schedule:
+    - cron: '30 20 * * *' # 20:30 UTC = 02:00 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # Go CLI; its pg_dump image follows supabase/config.toml major_version (17, same as live).
+      SUPABASE_CLI_VERSION: 2.120.0
+    steps:
+      - name: Check secrets
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+        run: |
+          fail() { echo "::error::$1 See docs/operations.md → Backups."; exit 1; }
+          # GitHub masks the whole secret; also mask the password as written and URL-decoded,
+          # in case a tool prints it on its own.
+          mask() {
+            local v="$1"
+            [ -n "$v" ] || return 0
+            v="${v//'%'/%25}"
+            v="${v//$'\r'/%0D}"
+            v="${v//$'\n'/%0A}"
+            echo "::add-mask::$v"
+          }
+          url="${SUPABASE_DB_URL//[$'\r\n']/}"
+          rest="${url#*://}"
+          userinfo="${rest%@*}"
+          if [ "$userinfo" != "$rest" ]; then
+            password="${userinfo#*:}"
+            bs='\x'
+            decoded="$(printf '%b' "${password//%/$bs}")"
+            mask "$password"
+            [ "$decoded" = "$password" ] || mask "$decoded"
+          fi
+
+          case "$url" in
+            postgres://*@* | postgresql://*@*) ;;
+            *) fail "SUPABASE_DB_URL is not set or is not a postgresql:// connection string." ;;
+          esac
+          hostport="${rest##*@}"
+          hostport="${hostport%%/*}"
+          case "$hostport" in
+            db.*.supabase.co*) fail "SUPABASE_DB_URL is the direct connection (IPv6 only); use the session pooler." ;;
+            *:6543) fail "SUPABASE_DB_URL is the transaction pooler (port 6543); use the session pooler (port 5432)." ;;
+          esac
+
+          recipient="${BACKUP_AGE_RECIPIENT//[[:space:]]/}"
+          [[ "$recipient" =~ ^age1[a-z0-9]+$ ]] ||
+            fail "BACKUP_AGE_RECIPIENT is not set or is not an age public key (age1…)."
+          echo "Both secrets are set."
+
+      # Only for supabase/config.toml, which pins the pg_dump major version.
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install age
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends age >/dev/null
+          age --version
+
+      - name: Dump schema and data
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          umask 077
+          url="${SUPABASE_DB_URL//[$'\r\n']/}"
+          plain="$RUNNER_TEMP/plain"
+          mkdir -p "$plain"
+          npx --yes "supabase@$SUPABASE_CLI_VERSION" db dump --db-url "$url" -f "$plain/schema.sql"
+          npx --yes "supabase@$SUPABASE_CLI_VERSION" db dump --db-url "$url" \
+            --data-only --use-copy -f "$plain/data.sql"
+
+      - name: Check the dumps are not empty
+        run: |
+          schema="$RUNNER_TEMP/plain/schema.sql"
+          data="$RUNNER_TEMP/plain/data.sql"
+          if [ ! -s "$schema" ] ||
+            ! grep -Eq '^CREATE TABLE (IF NOT EXISTS )?"public"\."appointments"' "$schema"; then
+            echo "::error::The schema dump is empty or has no public.appointments table."
+            exit 1
+          fi
+          # Count COPY rows without printing any; the hospital row must always be there.
+          if [ ! -s "$data" ] || ! awk '
+            /^COPY / { table = $2; gsub(/"/, "", table); copying = 1; next }
+            copying && $0 == "\\." { copying = 0; next }
+            copying { rows++; if (table == "public.hospitals") hospitals++ }
+            END { exit !(rows > 0 && hospitals > 0) }
+          ' "$data"; then
+            echo "::error::The data dump is empty or has no public.hospitals row."
+            exit 1
+          fi
+          echo "Both dumps look complete."
+
+      - name: Encrypt
+        id: encrypt
+        env:
+          BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+        run: |
+          recipient="${BACKUP_AGE_RECIPIENT//[[:space:]]/}"
+          today="$(TZ=Asia/Kolkata date +%F)"
+          name="mediqueue-db-$today"
+          days=14
+          if [ "${today:8:2}" = "01" ]; then
+            name="$name-monthly"
+            days=90
+          fi
+          out="$RUNNER_TEMP/encrypted"
+          mkdir -p "$out"
+          for part in schema data; do
+            file="$out/mediqueue-$part-$today.sql.age"
+            age -r "$recipient" -o "$file" "$RUNNER_TEMP/plain/$part.sql"
+            if [ "$(head -c 21 "$file")" != "age-encryption.org/v1" ]; then
+              echo "::error::$part was not encrypted."
+              exit 1
+            fi
+          done
+          rm -rf "$RUNNER_TEMP/plain"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "days=$days" >> "$GITHUB_OUTPUT"
+
+      - name: Upload encrypted files
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.encrypt.outputs.name }}
+          path: ${{ runner.temp }}/encrypted/*.age
+          if-no-files-found: error
+          retention-days: ${{ steps.encrypt.outputs.days }}
+          compression-level: 0
+
+      - name: Summary
+        env:
+          NAME: ${{ steps.encrypt.outputs.name }}
+          DAYS: ${{ steps.encrypt.outputs.days }}
+        run: echo "Encrypted backup \`$NAME\` uploaded, kept $DAYS days." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove local dump files
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/plain" "$RUNNER_TEMP/encrypted"
