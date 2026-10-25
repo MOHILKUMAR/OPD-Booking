@@ -123,7 +123,12 @@ export function SessionSummary({
 
       <div className="mt-3">
         {session.bookable ? (
-          <Button asChild size={compact ? 'sm' : 'default'} className="w-full sm:w-auto">
+          <Button
+            asChild
+            variant="cta"
+            size={compact ? 'sm' : 'default'}
+            className="w-full sm:w-auto"
+          >
             <Link to={`/book/${doctorId}?shift=${session.shift_id}&date=${session.session_date}`}>
               {t('bookToken')}
             </Link>

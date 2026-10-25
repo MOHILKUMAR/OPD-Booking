@@ -18,6 +18,11 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // booking actions: teal → green gradient (white text ≥ 5:1)
+        cta: "bg-gradient-to-r from-teal-700 to-emerald-700 text-white shadow-md shadow-teal-900/15 hover:from-teal-800 hover:to-emerald-800",
+        // the one main call to action on a coloured banner
+        highlight:
+          "bg-amber-400 text-amber-950 shadow-md shadow-amber-900/20 hover:bg-amber-300",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

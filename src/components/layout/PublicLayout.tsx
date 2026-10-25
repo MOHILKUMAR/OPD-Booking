@@ -1,6 +1,7 @@
 import { Menu, Phone, Siren } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
+import { AnnouncementBar } from '@/components/announcement-bar'
 import { LanguageSwitch } from '@/components/language-switch'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -83,6 +84,7 @@ export function PublicLayout() {
         {c('skipToContent')}
       </a>
       <EnvironmentRibbon />
+      <AnnouncementBar />
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
           <Link to="/" className="flex min-w-0 items-center gap-2 font-semibold">
@@ -115,7 +117,7 @@ export function PublicLayout() {
               </NavLink>
             ))}
             <LanguageSwitch className="ml-1" />
-            <Button asChild size="sm" className="ml-1">
+            <Button asChild size="sm" variant="cta" className="ml-1">
               <Link to="/doctors?available=1">{t('bookToken')}</Link>
             </Button>
           </nav>
@@ -152,7 +154,7 @@ export function PublicLayout() {
                       {t(n.label)}
                     </NavLink>
                   ))}
-                  <Button asChild className="mt-3">
+                  <Button asChild variant="cta" className="mt-3">
                     <Link to="/doctors?available=1" onClick={() => setOpen(false)}>
                       {t('bookToken')}
                     </Link>

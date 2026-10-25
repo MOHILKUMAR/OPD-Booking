@@ -17,7 +17,11 @@ test('home page shows hospital, live OPD status and booking entry points', async
   await expect(page.getByText(/OPD session.*running now/)).toBeVisible()
   await expect(page.getByRole('link', { name: 'Book a token' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Track my token' })).toBeVisible()
-  await expect(page.getByText('Demo environment')).toBeVisible()
+  // the latest announcement shows in the site-wide bar and in the home page list
+  await expect(
+    page.getByRole('region', { name: 'Hospital announcement' }).getByText('Demo environment'),
+  ).toBeVisible()
+  await expect(page.getByRole('main').getByText('Demo environment')).toBeVisible()
   await expect(page.getByText('Dr. Asha Rao (Demo)').first()).toBeVisible()
   await expectNoHorizontalScroll(page)
 })

@@ -1,7 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, Clock, MapPin, Phone, Search, Ticket } from 'lucide-react'
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import {
+  Activity,
+  ArrowRight,
+  CalendarDays,
+  Clock,
+  MapPin,
+  Phone,
+  Radar,
+  Search,
+  Siren,
+  Stethoscope,
+  Ticket,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { fetchAnnouncements, fetchDepartments, searchDoctors } from '@/api/public'
 import { AnnouncementList } from '@/components/announcements'
 import { DoctorAvatar } from '@/components/doctor'
@@ -13,6 +25,7 @@ import { Input } from '@/components/ui/input'
 import { useHospital, useToday } from '@/hooks/useHospital'
 import { defineMessages, useT } from '@/i18n'
 import { formatDate, formatTimeRange } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 const messages = defineMessages({
   en: {
@@ -37,6 +50,11 @@ const messages = defineMessages({
     operatingHours: 'Operating hours',
     addressContact: 'Address & contact',
     openInMaps: 'Open in maps',
+    glanceTitle: 'Today at a glance',
+    statDoctors: 'Doctors with OPD today',
+    statRunning: 'OPD running now',
+    statTokens: 'Online tokens left',
+    emergency: 'Emergency: {phone}',
   },
   hi: {
     hospitalNotFound: 'अस्पताल नहीं मिला',
@@ -60,8 +78,23 @@ const messages = defineMessages({
     operatingHours: 'खुलने का समय',
     addressContact: 'पता और संपर्क',
     openInMaps: 'मैप में खोलें',
+    glanceTitle: 'आज की झलक',
+    statDoctors: 'आज ओपीडी वाले डॉक्टर',
+    statRunning: 'अभी चल रही ओपीडी',
+    statTokens: 'बचे ऑनलाइन टोकन',
+    emergency: 'आपातकाल: {phone}',
   },
 })
+
+// Soft, distinct colours for department chips (text ≥ 4.5:1 on its tint).
+const DEPARTMENT_TONES = [
+  'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100',
+  'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100',
+  'border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100',
+  'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100',
+  'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100',
+  'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100',
+]
 
 export function HomePage() {
   const t = useT(messages)
@@ -69,6 +102,7 @@ export function HomePage() {
   const hospital = hospitalQuery.data
   const today = useToday()
   const navigate = useNavigate()
+  const location = useLocation()
   const [search, setSearch] = useState('')
 
   const departments = useQuery({
@@ -88,6 +122,13 @@ export function HomePage() {
     enabled: !!hospital,
   })
 
+  // "View all" in the announcement bar links to /#announcements
+  useEffect(() => {
+    if (location.hash === '#announcements' && announcements.data?.length) {
+      document.getElementById('announcements')?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [location.hash, announcements.data])
+
   if (hospitalQuery.isPending) return <PageSpinner />
   if (hospitalQuery.isError)
     return <ErrorState error={hospitalQuery.error} onRetry={() => hospitalQuery.refetch()} />
@@ -98,60 +139,128 @@ export function HomePage() {
     available.data?.items.flatMap((d) => d.sessions.map((s) => ({ doctor: d, session: s }))) ?? []
   const running = sessionsToday.filter((x) => x.session.session_status === 'OPEN').length
   const bookable = sessionsToday.filter((x) => x.session.bookable)
+  const doctorsToday = new Set(sessionsToday.map((x) => x.doctor.id)).size
+  const tokensLeft = bookable.reduce((sum, x) => sum + x.session.remaining_online, 0)
 
   return (
     <div className="space-y-10">
-      <section className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 px-5 py-8 text-primary-foreground sm:px-10 sm:py-12">
-        <p className="text-sm font-medium opacity-90">{formatDate(today)}</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">{hospital.name}</h1>
-        {hospital.tagline && <p className="mt-2 max-w-2xl opacity-90">{hospital.tagline}</p>}
-        <p className="mt-4 text-sm opacity-90">
-          {running > 0 ? t('running', { count: running }) : t('noneRunning')}
-          {' · '}
-          {t('openToday', { count: bookable.length })}
-        </p>
-        <form
-          className="mt-6 flex max-w-xl gap-2"
-          role="search"
-          onSubmit={(e) => {
-            e.preventDefault()
-            navigate(`/doctors${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ''}`)
-          }}
-        >
-          <label htmlFor="home-search" className="sr-only">
-            {t('searchLabel')}
-          </label>
-          <Input
-            id="home-search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('searchPlaceholder')}
-            className="h-11 bg-background text-foreground"
-          />
-          <Button
-            type="submit"
-            size="lg"
-            variant="secondary"
-            className="h-11"
-            aria-label={t('search')}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-700 px-5 py-8 text-white shadow-xl shadow-teal-900/20 sm:px-10 sm:py-12">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-white/10 blur-2xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-28 left-1/3 size-80 rounded-full bg-emerald-300/20 blur-3xl"
+        />
+        <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-sm font-medium">
+              <CalendarDays className="size-4" aria-hidden /> {formatDate(today)}
+            </p>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-5xl">{hospital.name}</h1>
+            {hospital.tagline && <p className="mt-2 max-w-2xl text-teal-50">{hospital.tagline}</p>}
+            <div className="mt-5 flex flex-wrap gap-2 text-sm">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 font-medium">
+                <span
+                  aria-hidden
+                  className={cn(
+                    'size-2 rounded-full',
+                    running > 0 ? 'animate-pulse bg-emerald-300' : 'bg-white/60',
+                  )}
+                />
+                {running > 0 ? t('running', { count: running }) : t('noneRunning')}
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 font-medium">
+                <Ticket className="size-4" aria-hidden />{' '}
+                {t('openToday', { count: bookable.length })}
+              </span>
+            </div>
+            <form
+              className="mt-6 flex max-w-xl gap-2"
+              role="search"
+              onSubmit={(e) => {
+                e.preventDefault()
+                navigate(
+                  `/doctors${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ''}`,
+                )
+              }}
+            >
+              <label htmlFor="home-search" className="sr-only">
+                {t('searchLabel')}
+              </label>
+              <div className="relative flex-1">
+                <Search
+                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-500"
+                  aria-hidden
+                />
+                <Input
+                  id="home-search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t('searchPlaceholder')}
+                  className="h-12 rounded-xl border-0 bg-white pl-10 text-slate-900 shadow-lg placeholder:text-slate-500"
+                />
+              </div>
+              <Button
+                type="submit"
+                size="lg"
+                variant="ghost"
+                className="h-12 rounded-xl bg-slate-900/25 px-4 text-white hover:bg-slate-900/40 hover:text-white"
+                aria-label={t('search')}
+              >
+                <Search />
+              </Button>
+            </form>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button
+                asChild
+                size="lg"
+                variant="highlight"
+                className="h-12 rounded-xl px-6 text-base"
+              >
+                <Link to="/doctors?available=1">
+                  <Ticket /> {t('bookToken')}
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="h-12 rounded-xl border-white/40 bg-white/10 px-6 text-base text-white shadow-none hover:bg-white/20 hover:text-white"
+              >
+                <Link to="/track">
+                  <Radar /> {t('trackToken')}
+                </Link>
+              </Button>
+            </div>
+          </div>
+          <aside
+            aria-label={t('glanceTitle')}
+            className="hidden rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm lg:block"
           >
-            <Search />
-          </Button>
-        </form>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button asChild size="lg" variant="secondary">
-            <Link to="/doctors?available=1">
-              <Ticket /> {t('bookToken')}
-            </Link>
-          </Button>
-          <Button
-            asChild
-            size="lg"
-            variant="outline"
-            className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
-          >
-            <Link to="/track">{t('trackToken')}</Link>
-          </Button>
+            <p className="text-sm font-semibold tracking-wide text-teal-50 uppercase">
+              {t('glanceTitle')}
+            </p>
+            <dl className="mt-4 space-y-3">
+              {[
+                { icon: Stethoscope, label: t('statDoctors'), value: doctorsToday },
+                { icon: Activity, label: t('statRunning'), value: running },
+                { icon: Ticket, label: t('statTokens'), value: tokensLeft },
+              ].map(({ icon: Icon, label, value }) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-3 rounded-xl bg-white/10 px-3 py-2.5"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-lg bg-white/20">
+                    <Icon className="size-4" aria-hidden />
+                  </span>
+                  <dt className="flex-1 text-sm text-teal-50">{label}</dt>
+                  <dd className="text-2xl font-bold tabular">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </aside>
         </div>
       </section>
 
@@ -165,10 +274,17 @@ export function HomePage() {
           <CardSkeletons count={4} className="grid-cols-2 sm:grid-cols-4" />
         ) : (
           <div className="flex flex-wrap gap-2">
-            {departments.data?.map((d) => (
-              <Button key={d.id} asChild variant="outline" className="rounded-full">
-                <Link to={`/doctors?department=${d.id}`}>{d.name}</Link>
-              </Button>
+            {departments.data?.map((d, i) => (
+              <Link
+                key={d.id}
+                to={`/doctors?department=${d.id}`}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                  DEPARTMENT_TONES[i % DEPARTMENT_TONES.length],
+                )}
+              >
+                <Stethoscope className="size-4" aria-hidden /> {d.name}
+              </Link>
             ))}
           </div>
         )}
@@ -194,95 +310,162 @@ export function HomePage() {
           <EmptyState title={t('noSessionsToday')} description={t('noSessionsTodayBody')} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {bookable.slice(0, 6).map(({ doctor, session }) => (
-              <Card key={`${doctor.id}-${session.shift_id}`} className="gap-3 py-4">
-                <CardHeader className="flex flex-row items-center gap-3 px-4">
-                  <DoctorAvatar
-                    name={doctor.full_name}
-                    photoUrl={doctor.photo_url}
-                    className="size-12"
-                  />
-                  <div className="min-w-0">
-                    <CardTitle className="truncate text-base">
-                      <Link to={`/doctors/${doctor.id}`} className="hover:underline">
-                        {doctor.full_name}
-                      </Link>
-                    </CardTitle>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {doctor.specialty} · {doctor.department.name}
-                    </p>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex items-center justify-between gap-2 px-4 text-sm">
-                  <div>
-                    <p>
-                      {session.shift_name}, {formatTimeRange(session.start_time, session.end_time)}
-                    </p>
-                    <p className="text-muted-foreground">
-                      {t('onlineLeft', { count: session.remaining_online })}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <SessionStatusBadge status={session.session_status} />
-                    <Button asChild size="sm">
+            {bookable.slice(0, 6).map(({ doctor, session }) => {
+              const leftShare =
+                session.online_capacity > 0
+                  ? Math.round((session.remaining_online / session.online_capacity) * 100)
+                  : 0
+              return (
+                <Card
+                  key={`${doctor.id}-${session.shift_id}`}
+                  className="gap-3 overflow-hidden border-t-4 border-t-teal-500 py-4 transition-shadow hover:shadow-md"
+                >
+                  <CardHeader className="flex flex-row items-center gap-3 px-4">
+                    <DoctorAvatar
+                      name={doctor.full_name}
+                      photoUrl={doctor.photo_url}
+                      className="size-12"
+                    />
+                    <div className="min-w-0">
+                      <CardTitle className="truncate text-base">
+                        <Link to={`/doctors/${doctor.id}`} className="hover:underline">
+                          {doctor.full_name}
+                        </Link>
+                      </CardTitle>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {doctor.specialty} · {doctor.department.name}
+                      </p>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 px-4 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2">
+                        <Clock className="mt-0.5 size-4 shrink-0 text-teal-600" aria-hidden />
+                        <div>
+                          <p className="font-medium">{session.shift_name}</p>
+                          <p className="whitespace-nowrap text-muted-foreground">
+                            {formatTimeRange(session.start_time, session.end_time)}
+                          </p>
+                        </div>
+                      </div>
+                      <SessionStatusBadge status={session.session_status} />
+                    </div>
+                    <div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden>
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500"
+                          style={{ width: `${leftShare}%` }}
+                        />
+                      </div>
+                      <p className="mt-1 text-muted-foreground">
+                        {t('onlineLeft', { count: session.remaining_online })}
+                      </p>
+                    </div>
+                    <Button asChild variant="cta" className="w-full">
                       <Link
                         to={`/book/${doctor.id}?shift=${session.shift_id}&date=${session.session_date}`}
                       >
-                        {t('book')}
+                        <Ticket /> {t('book')}
                       </Link>
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         )}
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2" aria-label={t('visitingInfo')}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Clock className="size-4" /> {t('operatingHours')}
-            </CardTitle>
+        <Card className="gap-0 overflow-hidden py-0">
+          <CardHeader className="flex flex-row items-center gap-3 bg-gradient-to-r from-teal-600 to-cyan-600 px-5 py-4 text-white">
+            <span className="flex size-9 items-center justify-center rounded-full bg-white/20">
+              <Clock className="size-5" aria-hidden />
+            </span>
+            <CardTitle className="text-base">{t('operatingHours')}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <dl className="space-y-1 text-sm">
-              {hospital.operating_hours.map((h) => (
-                <div key={h.label} className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">{h.label}</dt>
-                  <dd className="text-right font-medium">{h.hours}</dd>
-                </div>
-              ))}
+          <CardContent className="px-5 py-2">
+            <dl className="divide-y">
+              {hospital.operating_hours.map((h) => {
+                const allDay = /24\s*[x×]\s*7/i.test(h.hours)
+                return (
+                  <div
+                    key={h.label}
+                    className="flex flex-wrap items-center justify-between gap-2 py-3"
+                  >
+                    <dt className="flex items-center gap-2 font-medium text-slate-700">
+                      {allDay ? (
+                        <Siren className="size-4 text-rose-600" aria-hidden />
+                      ) : (
+                        <CalendarDays className="size-4 text-teal-600" aria-hidden />
+                      )}
+                      {h.label}
+                    </dt>
+                    <dd className="flex flex-wrap justify-end gap-1.5">
+                      {h.hours
+                        .split(',')
+                        .map((part) => part.trim())
+                        .filter(Boolean)
+                        .map((part) => (
+                          <span
+                            key={part}
+                            className={cn(
+                              'rounded-full px-2.5 py-1 text-xs font-semibold tabular',
+                              allDay
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-teal-50 text-teal-800 ring-1 ring-teal-200',
+                            )}
+                          >
+                            {part}
+                          </span>
+                        ))}
+                    </dd>
+                  </div>
+                )
+              })}
             </dl>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <MapPin className="size-4" /> {t('addressContact')}
-            </CardTitle>
+        <Card className="gap-0 overflow-hidden py-0">
+          <CardHeader className="flex flex-row items-center gap-3 bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-4 text-white">
+            <span className="flex size-9 items-center justify-center rounded-full bg-white/20">
+              <MapPin className="size-5" aria-hidden />
+            </span>
+            <CardTitle className="text-base">{t('addressContact')}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <address className="not-italic">
+          <CardContent className="space-y-4 px-5 py-4 text-sm">
+            <address className="not-italic text-slate-700">
               {hospital.address_line}, {hospital.city}, {hospital.state} {hospital.postal_code}
             </address>
-            {hospital.map_url && (
-              <a
-                href={hospital.map_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary hover:underline"
-              >
-                {t('openInMaps')}
-              </a>
-            )}
-            {hospital.phone && (
-              <p className="flex items-center gap-2">
-                <Phone className="size-4" aria-hidden />{' '}
-                <a href={`tel:${hospital.phone.replace(/\s/g, '')}`}>{hospital.phone}</a>
-              </p>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {hospital.phone && (
+                <a
+                  href={`tel:${hospital.phone.replace(/\s/g, '')}`}
+                  className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1.5 font-medium text-indigo-800 ring-1 ring-indigo-200 hover:bg-indigo-100"
+                >
+                  <Phone className="size-4" aria-hidden /> {hospital.phone}
+                </a>
+              )}
+              {hospital.emergency_phone && (
+                <a
+                  href={`tel:${hospital.emergency_phone.replace(/\s/g, '')}`}
+                  className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1.5 font-semibold text-rose-800 ring-1 ring-rose-200 hover:bg-rose-100"
+                >
+                  <Siren className="size-4" aria-hidden />
+                  {t('emergency', { phone: hospital.emergency_phone })}
+                </a>
+              )}
+              {hospital.map_url && (
+                <a
+                  href={hospital.map_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1.5 font-medium text-violet-800 ring-1 ring-violet-200 hover:bg-violet-100"
+                >
+                  <MapPin className="size-4" aria-hidden /> {t('openInMaps')}
+                </a>
+              )}
+            </div>
           </CardContent>
         </Card>
       </section>

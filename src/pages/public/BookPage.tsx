@@ -510,6 +510,7 @@ export function BookPage() {
             <Button
               type="submit"
               size="lg"
+              variant="cta"
               className="w-full"
               disabled={!selected || !selected.bookable || busy}
             >
