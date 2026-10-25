@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { patientNameSchema, patientPhoneSchema } from '@shared/schemas.ts'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, ArrowLeft, Loader2, ShieldCheck } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Info, Loader2, ShieldCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
@@ -58,6 +58,8 @@ const messages = defineMessages({
     windowTomorrow: 'Booking is open for today and tomorrow.',
     loadingSessions: 'Loading sessions',
     noSessions: 'This doctor has no OPD sessions in the booking window.',
+    noOpdToday: 'No OPD with this doctor today. The sessions below are for the coming days.',
+    seeToday: 'See doctors with OPD today',
     sessionGroup: 'OPD session',
     tokensLeft: '{count} tokens left',
     noneBookable:
@@ -108,6 +110,8 @@ const messages = defineMessages({
     windowTomorrow: 'बुकिंग आज और कल के लिए खुली है।',
     loadingSessions: 'सत्र लोड हो रहे हैं',
     noSessions: 'बुकिंग की अवधि में इन डॉक्टर का कोई ओपीडी सत्र नहीं है।',
+    noOpdToday: 'आज इन डॉक्टर की ओपीडी नहीं है। नीचे दिए सत्र आने वाले दिनों के हैं।',
+    seeToday: 'आज ओपीडी वाले डॉक्टर देखें',
     sessionGroup: 'ओपीडी सत्र',
     tokensLeft: '{count} टोकन बाकी',
     noneBookable:
@@ -344,45 +348,61 @@ export function BookPage() {
           ) : (sessions.data ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('noSessions')}</p>
           ) : (
-            <div role="radiogroup" aria-label={t('sessionGroup')} className="grid gap-2">
-              {sessions.data!.map((s) => {
-                const key = `${s.shift_id}|${s.session_date}`
-                const isSelected = key === selectedKey
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    disabled={!s.bookable}
-                    onClick={() => select(s)}
-                    className={cn(
-                      'flex w-full flex-col gap-1 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:flex-row sm:items-center sm:justify-between',
-                      isSelected
-                        ? 'border-primary bg-accent ring-2 ring-primary/30'
-                        : 'hover:bg-muted/60',
-                    )}
-                  >
-                    <span>
-                      <span className="font-medium">
-                        {relativeDayLabel(s.session_date, today)} · {s.shift_name}
-                      </span>
-                      <span className="block text-sm text-muted-foreground">
-                        {formatTimeRange(s.start_time, s.end_time)}
-                        {s.bookable
-                          ? ` · ${t('tokensLeft', { count: s.remaining_online })}`
-                          : ` · ${sessionUnavailableText(s.unavailable_reason, s.unavailable_message)}`}
-                      </span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      {s.booking_fee_paise > 0 && (
-                        <span className="text-sm">{formatMoney(s.booking_fee_paise)}</span>
+            <div className="grid gap-2">
+              {!sessions.data!.some((s) => s.session_date === today) && (
+                <div className="flex items-start gap-2 rounded-md border border-cream-dark bg-cream px-3 py-2 text-sm text-cream-ink">
+                  <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  <p>
+                    {t('noOpdToday')}{' '}
+                    <Link
+                      to="/doctors?available=1"
+                      className="font-semibold underline underline-offset-2"
+                    >
+                      {t('seeToday')}
+                    </Link>
+                  </p>
+                </div>
+              )}
+              <div role="radiogroup" aria-label={t('sessionGroup')} className="grid gap-2">
+                {sessions.data!.map((s) => {
+                  const key = `${s.shift_id}|${s.session_date}`
+                  const isSelected = key === selectedKey
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      disabled={!s.bookable}
+                      onClick={() => select(s)}
+                      className={cn(
+                        'flex w-full flex-col gap-1 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:flex-row sm:items-center sm:justify-between',
+                        isSelected
+                          ? 'border-primary bg-accent ring-2 ring-primary/30'
+                          : 'hover:bg-muted/60',
                       )}
-                      <SessionStatusBadge status={s.session_status} />
-                    </span>
-                  </button>
-                )
-              })}
+                    >
+                      <span>
+                        <span className="font-medium">
+                          {relativeDayLabel(s.session_date, today)} · {s.shift_name}
+                        </span>
+                        <span className="block text-sm text-muted-foreground">
+                          {formatTimeRange(s.start_time, s.end_time)}
+                          {s.bookable
+                            ? ` · ${t('tokensLeft', { count: s.remaining_online })}`
+                            : ` · ${sessionUnavailableText(s.unavailable_reason, s.unavailable_message)}`}
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        {s.booking_fee_paise > 0 && (
+                          <span className="text-sm">{formatMoney(s.booking_fee_paise)}</span>
+                        )}
+                        <SessionStatusBadge status={s.session_status} />
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )}
           {bookable.length === 0 && sessions.data && sessions.data.length > 0 && (

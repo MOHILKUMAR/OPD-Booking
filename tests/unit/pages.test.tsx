@@ -184,6 +184,24 @@ describe('BookPage', () => {
       screen.getAllByText('All tokens for this session have been booked.').length,
     ).toBeGreaterThan(0)
   })
+
+  it('explains when the doctor has no OPD today and links to doctors who do', async () => {
+    mocks.fetchSessions.mockResolvedValue([
+      { ...session, session_date: '2026-10-17', shift_name: 'Evening OPD' },
+    ])
+    renderAt('/book/doc-1', [{ path: '/book/:doctorId', element: <BookPage /> }])
+    expect(await screen.findByText(/No OPD with this doctor today/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'See doctors with OPD today' })).toHaveAttribute(
+      'href',
+      '/doctors?available=1',
+    )
+  })
+
+  it('shows no such note when today has a session', async () => {
+    renderAt('/book/doc-1', [{ path: '/book/:doctorId', element: <BookPage /> }])
+    await screen.findByText(/Morning OPD/)
+    expect(screen.queryByText(/No OPD with this doctor today/)).not.toBeInTheDocument()
+  })
 })
 
 describe('BookPage with Cloudflare Turnstile (VITE_TURNSTILE_SITE_KEY set)', () => {
