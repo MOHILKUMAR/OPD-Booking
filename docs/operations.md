@@ -3,19 +3,156 @@
 ## Backups (the free tier has none)
 
 Supabase Free has **no automated backups and no point-in-time recovery**. Until the hospital moves to
-a paid plan, take your own:
+a paid plan, the **Database backup** workflow
+([`.github/workflows/db-backup.yml`](../.github/workflows/db-backup.yml)) takes them for free:
+
+- Every night at **02:00 IST** (20:30 UTC) it dumps the schema and the data separately with the
+  Supabase CLI (`supabase db dump`, pg_dump 17 like the live project). It encrypts both files with
+  [age](https://github.com/FiloSottile/age) to the owner's public key and uploads only the `.age`
+  files as the run's artifact, `mediqueue-db-YYYY-MM-DD` (IST date).
+- Daily artifacts are kept **14 days**. The run on the 1st of the month (`…-monthly`) is kept **90
+  days**, the most GitHub allows for a public repository. To hold 6 monthly copies, keep each monthly
+  file you download for the restore drill in offline storage for 6 months.
+- The run fails, and GitHub sends an email, if a secret is missing or wrong, a dump is empty or
+  encryption did not happen.
+- **The repository is public.** Anyone with a GitHub account can read the run logs and download the
+  artifacts, so encryption is mandatory. The workflow never prints the connection string, data, sizes
+  or row counts, and only the owner's offline private key can decrypt the files.
+- The schema dump holds MediQueue's own schemas (`public`, `app`). The data dump holds their rows plus
+  Supabase Auth (staff accounts, password hashes, 2FA factors), Storage metadata and the pg_cron jobs.
+  Neither holds Vault secrets, Edge Function secrets, API keys or dashboard settings (Auth, CAPTCHA,
+  SMTP); recreate those from [deployment.md](deployment.md) and [06-environment.md](06-environment.md).
+
+### One-time setup (owner, in your own terminal)
+
+Never paste the private key, the database password or the connection string into a chat, an issue,
+a commit or a command line.
+
+1. Install age: `winget install --id FiloSottile.age` (Windows), `brew install age` (macOS) or
+   `sudo apt install age` (Linux).
+2. Create the key pair, outside the repository folder:
+
+   ```bash
+   age-keygen -o mediqueue-backup.key
+   ```
+
+   It prints `Public key: age1…`. `mediqueue-backup.key` is the **private key**: keep it offline in
+   two places (for example a password manager and an encrypted USB drive), never in the repository,
+   CI or a cloud drive. Without it no backup can be restored; with it, anyone holding an artifact can
+   read patient data. Use the default key type (no `-pq`): the runner's age cannot encrypt to
+   post-quantum keys.
+
+3. Store the public key (only the public key goes to GitHub):
+
+   ```bash
+   age-keygen -y mediqueue-backup.key | gh secret set BACKUP_AGE_RECIPIENT --repo MOHILKUMAR/OPD-Booking
+   ```
+
+4. Copy the connection string: Supabase dashboard → the project → **Connect** → **Session pooler**
+   (port 5432, user `postgres.<project-ref>`, host `aws-…-ap-southeast-1.pooler.supabase.com`), and
+   replace `[YOUR-PASSWORD]` with the database password (Project Settings → Database → Reset database
+   password if you do not have it). Percent-encode any character in the password other than letters
+   and digits (`@` → `%40`, `/` → `%2F`, `%` → `%25`). Do not use the **Direct connection** (IPv6
+   only on Free; GitHub runners have no IPv6) or the **Transaction pooler** (port 6543; pg_dump needs
+   a session). Then store it, pasting it at the hidden prompt:
+
+   ```bash
+   gh secret set SUPABASE_DB_URL --repo MOHILKUMAR/OPD-Booking
+   ```
+
+5. Merge the workflow into `main` (GitHub runs schedules and **Run workflow** only from the default
+   branch), run it once by hand (below) and check that it is green.
+
+### Run it by hand
+
+Before every migration push ([deployment.md](deployment.md#8-rollback)), or to test the setup:
 
 ```bash
-# nightly, from a trusted machine or CI with the DB password stored as a secret
-npx supabase@latest db dump --linked -f mediqueue-schema-$(date +%F).sql
-npx supabase@latest db dump --linked --data-only -f mediqueue-data-$(date +%F).sql
+gh workflow run db-backup.yml --repo MOHILKUMAR/OPD-Booking
+gh run watch --repo MOHILKUMAR/OPD-Booking
 ```
 
-- Encrypt the files at rest and keep at least 14 daily plus 6 monthly copies. They contain patient
-  names and phone numbers.
-- **Test a restore monthly.** Create a scratch project, `psql` the schema dump then the data dump,
-  point a local build at it, and open a few bookings.
-- Before every migration push, take an extra dump (see [deployment.md](deployment.md#8-rollback)).
+Or GitHub → **Actions** → **Database backup** → **Run workflow**.
+
+### Keep it running
+
+- GitHub emails failed scheduled runs to whoever last changed the workflow's schedule. Look at
+  **Actions** once a week anyway.
+- In a public repository GitHub **disables scheduled workflows after 60 days without repository
+  activity** (it emails a warning first). Turn it back on with
+  `gh workflow enable db-backup.yml --repo MOHILKUMAR/OPD-Booking`.
+- Anyone with write access to the repository can read the secrets through a workflow, so give write
+  access only to people you would trust with patient data.
+- If GitHub Actions is unavailable, dump from a trusted machine, encrypt with
+  `age -r age1… -o FILE.sql.age FILE.sql` and delete the `.sql` files:
+
+  ```bash
+  npx supabase@latest db dump --linked -f mediqueue-schema-$(date +%F).sql
+  npx supabase@latest db dump --linked --data-only --use-copy -f mediqueue-data-$(date +%F).sql
+  ```
+
+### Monthly restore drill
+
+Restore the latest backup into a **scratch** Supabase project (a Free organization can have two
+active projects) or a local Supabase stack (`npx supabase init` then `npx supabase start` in an
+empty folder; needs Docker). A plain PostgreSQL install will not load the schema, which relies on
+Supabase's `auth` schema, roles and extensions. You need age and `psql` 17 or newer. Work in a
+folder **outside** the repository so no decrypted file can be committed.
+
+1. Download a backup. Each run holds one artifact, saved in a folder of the same name:
+
+   ```bash
+   gh run list --workflow db-backup.yml --repo MOHILKUMAR/OPD-Booking --status success --limit 5
+   gh run download <run-id> --repo MOHILKUMAR/OPD-Booking --dir restore-drill
+   ```
+
+2. Decrypt it with the private key (it never leaves your machine):
+
+   ```bash
+   cd restore-drill/mediqueue-db-YYYY-MM-DD
+   age -d -i /path/to/mediqueue-backup.key -o schema.sql mediqueue-schema-YYYY-MM-DD.sql.age
+   age -d -i /path/to/mediqueue-backup.key -o data.sql mediqueue-data-YYYY-MM-DD.sql.age
+   ```
+
+3. Load the schema, then the data, in one transaction. Take the scratch project's own session pooler
+   string (Connect dialog) and type it at the hidden prompt:
+
+   ```bash
+   read -rsp 'Scratch database URL: ' SCRATCH_DB_URL && echo
+   psql --single-transaction --variable ON_ERROR_STOP=1 \
+     --command 'alter default privileges in schema public revoke all on tables from anon, authenticated' \
+     --command 'alter default privileges in schema public revoke all on sequences from anon, authenticated' \
+     --command 'alter default privileges in schema public revoke all on functions from anon, authenticated' \
+     --file schema.sql \
+     --command 'set session_replication_role = replica' \
+     --file data.sql \
+     --dbname "$SCRATCH_DB_URL"
+   ```
+
+   The three `revoke` lines stop a new project's default grants from widening table and function
+   access beyond what the dump records. If psql stops on an error, the backup does not restore as it
+   is: fix this procedure now, not during an incident.
+
+4. Open a few bookings in the scratch project's SQL editor and compare them with the live Admin
+   console (same references, tokens and statuses). Optionally point a local build at the scratch
+   project, sign in with your staff account and open the same bookings.
+
+   ```sql
+   select count(*) from appointments;
+   select booking_reference, session_date, token_no, status
+   from appointments order by created_at desc limit 5;
+   ```
+
+5. Clean up: delete the scratch project (Project Settings → General → Delete project) or run
+   `npx supabase stop --no-backup`, and delete `schema.sql` and `data.sql`; they hold patient data.
+   Keep the monthly `.age` files offline for 6 months, and note the date and result of the drill.
+
+The restored copy has the pg_cron jobs but no Vault secrets, so it never calls the live
+`automation` function. After a **real** recovery into a new production project, also recreate the
+Vault secrets (`node scripts/setup-automation.mjs`), deploy the Edge Functions and their secrets,
+redo the Auth settings ([deployment.md](deployment.md) §2–3), check `select jobname from cron.job`
+(run `supabase/sql/scheduled-jobs.sql` if the jobs are missing) and run the checks in
+[deployment.md](deployment.md#7-verify-a-deployment).
 
 ## Monitoring
 
@@ -156,8 +293,9 @@ applies; its obligations were **not** reviewed in this project. Before real pati
 
 ## Production readiness checklist
 
-- [ ] Paid Supabase plan (daily backups, no pausing) or an equivalent tested backup and restore
-      routine
+- [ ] Backups: the nightly **Database backup** workflow is green, the age private key is stored
+      offline in two places and this month's restore drill passed (see Backups). Move to a paid
+      Supabase plan (daily backups, no pausing) before full-scale use with real patients
 - [ ] Custom domain, `VITE_APP_ENV=production`, Supabase Site URL updated
 - [ ] Turnstile on: `VITE_TURNSTILE_SITE_KEY` deployed first, then Supabase CAPTCHA enabled
       ([deployment.md](deployment.md) §2)
