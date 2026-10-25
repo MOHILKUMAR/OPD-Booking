@@ -7,6 +7,7 @@ import {
   Db,
   expectMqError,
   expectPermissionDenied,
+  openSession,
   randomPhone,
   user,
   type Fixture,
@@ -264,6 +265,74 @@ describe('capacity enforcement', () => {
       }),
       'MQ_SESSION_UNAVAILABLE',
     )
+  })
+
+  it('once the OPD starts, unused walk-in tokens open to online booking until the session is full', async () => {
+    const fx = await createFixture(db, { maxTokens: 5, walkinReserved: 2 })
+    const sessionsToday = async () =>
+      (
+        await db.rpcRows(anon, 'get_sessions', {
+          p_hospital_id: fx.hospitalId,
+          p_from: fx.today,
+          p_to: fx.today,
+          p_doctor_ids: [fx.doctorId],
+        })
+      )[0] as { online_capacity: number; remaining_online: number; bookable: boolean }
+    for (let i = 0; i < 3; i++) {
+      await book(db, i % 2 ? fx.users.patientB : fx.users.patientA, {
+        shiftId: fx.shiftId,
+        date: fx.today,
+      })
+    }
+    expect(await sessionsToday()).toMatchObject({
+      online_capacity: 3,
+      remaining_online: 0,
+      bookable: false,
+    })
+    const full = await expectMqError(
+      book(db, fx.users.patientB, { shiftId: fx.shiftId, date: fx.today }),
+      'MQ_SESSION_UNAVAILABLE',
+    )
+    expect(full.detail).toBe('FULL')
+
+    await openSession(db, fx)
+    expect(await sessionsToday()).toMatchObject({
+      online_capacity: 5,
+      remaining_online: 2,
+      bookable: true,
+    })
+    const [{ online_capacity }] = await db.sql<{ online_capacity: number }>(
+      `select online_capacity from public.queue_states where shift_id = $1 and session_date = $2`,
+      [fx.shiftId, fx.today],
+    )
+    expect(online_capacity).toBe(5)
+    const fourth = await book(db, fx.users.patientB, { shiftId: fx.shiftId, date: fx.today })
+    const fifth = await book(db, fx.users.patientA, { shiftId: fx.shiftId, date: fx.today })
+    expect([fourth.token_no, fifth.token_no]).toEqual([4, 5])
+    expect(
+      (
+        await expectMqError(
+          book(db, fx.users.patientB, { shiftId: fx.shiftId, date: fx.today }),
+          'MQ_SESSION_UNAVAILABLE',
+        )
+      ).detail,
+    ).toBe('FULL')
+  })
+
+  it('a hospital can keep the walk-in reserve for the desk all day', async () => {
+    const fx = await createFixture(db, {
+      maxTokens: 3,
+      walkinReserved: 1,
+      hospital: { release_walkin_reserve_on_start: false },
+    })
+    await book(db, fx.users.patientA, { shiftId: fx.shiftId, date: fx.today })
+    await book(db, fx.users.patientB, { shiftId: fx.shiftId, date: fx.today })
+    await openSession(db, fx)
+    const err = await expectMqError(
+      book(db, fx.users.patientA, { shiftId: fx.shiftId, date: fx.today }),
+      'MQ_SESSION_UNAVAILABLE',
+    )
+    expect(err.detail).toBe('FULL')
   })
 
   it('a cancellation frees a slot', async () => {

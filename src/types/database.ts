@@ -48,6 +48,8 @@ export interface Hospital {
   duplicate_policy: DuplicatePolicy
   max_bookings_per_phone_per_day: number
   require_patient_age: boolean
+  /** Once a session starts, unused walk-in tokens can be booked online too. */
+  release_walkin_reserve_on_start: boolean
   default_booking_fee_paise: number
   online_payments_enabled: boolean
   payment_hold_minutes: number

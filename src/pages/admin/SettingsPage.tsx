@@ -60,6 +60,9 @@ const messages = defineMessages({
     duplicatePhone: 'One active token per phone, doctor and session',
     duplicatePhoneName: 'One per phone + patient name (families)',
     requireAge: 'Patient age is required',
+    releaseWalkin: 'Open unused walk-in tokens to online booking once the OPD starts',
+    releaseWalkinHelp:
+      'Each shift keeps some tokens for walk-in patients. With this on, once staff start the session, any token still free can also be booked online, so the session can fill up. Online booking still closes at each shift’s cut-off before the session ends.',
 
     fees: 'Fees and online payment',
     defaultFee: 'Default booking fee (₹, 0 = free)',
@@ -135,6 +138,9 @@ const messages = defineMessages({
     duplicatePhone: 'हर फ़ोन, डॉक्टर और सत्र पर एक सक्रिय टोकन',
     duplicatePhoneName: 'हर फ़ोन + मरीज़ के नाम पर एक (परिवारों के लिए)',
     requireAge: 'मरीज़ की उम्र ज़रूरी है',
+    releaseWalkin: 'ओपीडी शुरू होने पर बचे हुए वॉक-इन टोकन ऑनलाइन बुकिंग के लिए खोलें',
+    releaseWalkinHelp:
+      'हर शिफ़्ट में कुछ टोकन वॉक-इन मरीज़ों के लिए रखे जाते हैं। इसे चालू रखने पर, स्टाफ़ के सत्र शुरू करते ही जो भी टोकन बचे हैं वे ऑनलाइन भी बुक हो सकते हैं, ताकि सत्र पूरा भर सके। ऑनलाइन बुकिंग फिर भी सत्र ख़त्म होने से पहले हर शिफ़्ट के कट-ऑफ़ पर बंद हो जाती है।',
 
     fees: 'शुल्क और ऑनलाइन भुगतान',
     defaultFee: 'डिफ़ॉल्ट बुकिंग शुल्क (₹, 0 = निःशुल्क)',
@@ -235,6 +241,7 @@ const schema = z.object({
   duplicate_policy: z.enum(['PHONE', 'PHONE_AND_NAME']),
   max_bookings_per_phone_per_day: z.coerce.number().int().min(1).max(20),
   require_patient_age: z.boolean(),
+  release_walkin_reserve_on_start: z.boolean(),
   default_booking_fee: z
     .string()
     .trim()
@@ -289,6 +296,7 @@ export default function SettingsPage() {
       duplicate_policy: h.duplicate_policy,
       max_bookings_per_phone_per_day: h.max_bookings_per_phone_per_day,
       require_patient_age: h.require_patient_age,
+      release_walkin_reserve_on_start: h.release_walkin_reserve_on_start,
       default_booking_fee: String(h.default_booking_fee_paise / 100),
       online_payments_enabled: h.online_payments_enabled,
       payment_hold_minutes: h.payment_hold_minutes,
@@ -335,6 +343,7 @@ export default function SettingsPage() {
   const toggle = (
     name:
       | 'require_patient_age'
+      | 'release_walkin_reserve_on_start'
       | 'online_payments_enabled'
       | 'auto_refund_enabled'
       | 'sms_alerts_enabled'
@@ -447,6 +456,10 @@ export default function SettingsPage() {
             />
           </div>
           {toggle('require_patient_age', t('requireAge'))}
+          <div className="space-y-1 sm:col-span-2">
+            {toggle('release_walkin_reserve_on_start', t('releaseWalkin'))}
+            <p className="text-sm text-muted-foreground">{t('releaseWalkinHelp')}</p>
+          </div>
         </CardContent>
       </Card>
 

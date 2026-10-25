@@ -96,6 +96,11 @@ and the internal `app.rate_limits` (counters) and `app.config` (tunable limits) 
   unscheduled day creates an extra session.
 - **queue_states**: the concrete session for `(shift, date)`. It is created lazily on first
   booking or when staff open it, and holds the live queue state.
+- **Online capacity** is `max_tokens − walkin_reserved` until staff start the session. With
+  `hospitals.release_walkin_reserve_on_start` (on by default), once the session is `OPEN` or
+  `PAUSED` every free token can be booked online until the session is full or the online cutoff
+  before its end (`20261025000100_release_walkin_reserve.sql`). Walk-ins can always use the
+  full capacity.
 
 `app.resolve_session(shift, date)` combines these into effective times, capacity and a
 closed reason. `app.booking_block_reason()` adds session state, the booking window, the

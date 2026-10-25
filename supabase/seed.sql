@@ -52,7 +52,8 @@ insert into public.shifts (id, hospital_id, doctor_id, name, start_time, end_tim
   ('00000000-0000-4000-8000-000000000307', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000206', 'Evening OPD', '16:00', '19:00', 20, 4, 30, 12, null)
 on conflict (id) do nothing;
 
--- Weekly schedules (0 = Sunday)
+-- Weekly schedules (0 = Sunday). Two demo doctors also hold a Sunday OPD so the demo always
+-- has something to book.
 insert into public.doctor_schedules (hospital_id, doctor_id, shift_id, weekday, effective_from)
 select '00000000-0000-4000-8000-000000000001', s.doctor_id, s.id, wd, date '2026-01-01'
 from public.shifts s
@@ -60,11 +61,11 @@ cross join lateral unnest(
   case s.id
     when '00000000-0000-4000-8000-000000000301' then array[1, 2, 3, 4, 5, 6]
     when '00000000-0000-4000-8000-000000000302' then array[1, 3, 5]
-    when '00000000-0000-4000-8000-000000000303' then array[1, 2, 3, 4, 5, 6]
+    when '00000000-0000-4000-8000-000000000303' then array[0, 1, 2, 3, 4, 5, 6]
     when '00000000-0000-4000-8000-000000000304' then array[1, 2, 3, 4, 5, 6]
     when '00000000-0000-4000-8000-000000000305' then array[2, 4, 6]
     when '00000000-0000-4000-8000-000000000306' then array[1, 2, 4, 5]
-    when '00000000-0000-4000-8000-000000000307' then array[1, 3, 5]
+    when '00000000-0000-4000-8000-000000000307' then array[0, 1, 3, 5]
   end
 ) as wd
 where s.hospital_id = '00000000-0000-4000-8000-000000000001'
