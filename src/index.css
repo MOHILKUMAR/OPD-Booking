@@ -3,36 +3,40 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Design tokens (shadcn/ui, Tailwind v4). Teal primary, slate neutrals. */
+/* Design tokens (shadcn/ui, Tailwind v4).
+   Brand palette: #086288 (brand), #4D8DBA (steel), #97D7FF (sky), #FFEFC4 (cream).
+   Text on each keeps WCAG AA: white on brand 6.7:1, brand on cream 5.9:1, brand-deep on sky 7.3:1.
+   White on steel is only 3.6:1, so steel is used for borders, icons and large text, not small text.
+   Corners are kept small (4px boxes) for a crisp look. */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.985 0.002 247.8);
+  --radius: 0.25rem;
+  --background: #f6f9fb;
   --foreground: oklch(0.21 0.034 264.7);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.21 0.034 264.7);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.21 0.034 264.7);
-  --primary: oklch(0.511 0.096 186.4);
-  --primary-foreground: oklch(0.985 0.014 180.7);
+  --primary: #086288;
+  --primary-foreground: #f7fbfd;
   --secondary: oklch(0.967 0.003 264.5);
   --secondary-foreground: oklch(0.21 0.034 264.7);
   --muted: oklch(0.967 0.003 264.5);
   --muted-foreground: oklch(0.446 0.03 256.8);
-  --accent: oklch(0.953 0.051 180.8);
-  --accent-foreground: oklch(0.386 0.063 188.4);
+  --accent: #e3f4ff;
+  --accent-foreground: #053f58;
   --destructive: oklch(0.577 0.245 27.3);
   --success: oklch(0.527 0.137 150.1);
   --warning: oklch(0.666 0.157 58.3);
   --border: oklch(0.928 0.006 264.5);
   --input: oklch(0.928 0.006 264.5);
-  --ring: oklch(0.6 0.104 184.7);
-  --chart-1: oklch(0.6 0.118 184.7);
-  --chart-2: oklch(0.546 0.245 262.9);
+  --ring: #4d8dba;
+  --chart-1: #086288;
+  --chart-2: #2f6f9e; /* deeper steel: badge text on its tint stays ≥ 4.5:1 */
   --chart-3: oklch(0.769 0.188 70.1);
   --chart-4: oklch(0.645 0.246 16.4);
   --chart-5: oklch(0.627 0.265 303.9);
-  /* validated single-series data colour (dataviz validator: light surface #ffffff) */
-  --series-1: #0d9488;
+  /* single-series data colour: brand on white is 6.7:1 */
+  --series-1: #086288;
 }
 
 .dark {
@@ -65,10 +69,21 @@
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  /* small, consistent corners: nothing rounder than 6px except pills and circles */
+  --radius-sm: 2px;
+  --radius-md: 3px;
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 2px);
+  --radius-3xl: calc(var(--radius) + 2px);
+  --color-brand: #086288;
+  --color-brand-dark: #064e6d;
+  --color-brand-deep: #053f58;
+  --color-steel: #4d8dba;
+  --color-sky: #97d7ff;
+  --color-cream: #ffefc4;
+  --color-cream-dark: #ffe3a1;
+  --color-cream-ink: #6b4a00;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

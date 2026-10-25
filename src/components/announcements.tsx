@@ -42,7 +42,7 @@ export function AnnouncementList({ items }: { items: Item[] }) {
           const tone = ANNOUNCEMENT_TONE[a.kind]
           const Icon = tone.icon
           return (
-            <article key={a.id} className={cn('flex gap-3 rounded-xl border p-4', tone.card)}>
+            <article key={a.id} className={cn('flex gap-3 rounded-lg border p-4', tone.card)}>
               <span
                 className={cn(
                   'flex size-10 shrink-0 items-center justify-center rounded-full',
@@ -53,7 +53,7 @@ export function AnnouncementList({ items }: { items: Item[] }) {
               </span>
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', tone.pill)}>
+                  <span className={cn('rounded-sm px-2 py-0.5 text-xs font-semibold', tone.pill)}>
                     {t(`kind.${a.kind}`)}
                   </span>
                   {a.published_at && (

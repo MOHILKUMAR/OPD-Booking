@@ -63,7 +63,7 @@ export function EnvironmentRibbon() {
   const t = useT(messages)
   if (env.VITE_APP_ENV === 'production') return null
   return (
-    <div className="bg-warning/15 px-4 py-1 text-center text-xs font-medium text-warning">
+    <div className="bg-brand-deep px-4 py-1 text-center text-xs font-medium text-cream">
       {t('ribbon', { env: t(env.VITE_APP_ENV === 'staging' ? 'staging' : 'development') })}
     </div>
   )
@@ -170,12 +170,12 @@ export function PublicLayout() {
         <Outlet />
       </main>
 
-      <footer className="border-t bg-muted/40">
+      <footer className="border-t-4 border-sky bg-brand-deep text-white">
         <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 text-sm sm:grid-cols-3">
           <div>
             <p className="font-semibold">{hospital?.name}</p>
             {hospital && (
-              <address className="mt-1 not-italic text-muted-foreground">
+              <address className="mt-1 not-italic text-sky">
                 {hospital.address_line}, {hospital.city}, {hospital.state} {hospital.postal_code}
               </address>
             )}
@@ -192,22 +192,22 @@ export function PublicLayout() {
             {hospital?.emergency_phone && (
               <a
                 href={`tel:${hospital.emergency_phone}`}
-                className="flex items-center gap-2 font-medium text-destructive hover:underline"
+                className="flex items-center gap-2 font-semibold text-rose-300 hover:underline"
               >
                 <Siren className="size-4" aria-hidden />{' '}
                 {t('emergency', { phone: hospital.emergency_phone })}
               </a>
             )}
-            <p className="text-xs text-muted-foreground">{t('emergencyNote')}</p>
+            <p className="text-xs text-accent">{t('emergencyNote')}</p>
           </div>
           <div className="flex flex-col gap-1 sm:items-end">
-            <Link to="/display" className="text-muted-foreground hover:underline">
+            <Link to="/display" className="text-sky hover:underline">
               {t('display')}
             </Link>
-            <Link to="/staff/login" className="text-muted-foreground hover:underline">
+            <Link to="/staff/login" className="text-sky hover:underline">
               {t('staffLogin')}
             </Link>
-            <p className="text-xs text-muted-foreground">{t('poweredBy')}</p>
+            <p className="text-xs text-accent">{t('poweredBy')}</p>
           </div>
         </div>
       </footer>

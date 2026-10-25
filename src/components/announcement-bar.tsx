@@ -68,9 +68,14 @@ export function AnnouncementBar() {
   }
 
   return (
-    <div role="region" aria-label={t('label')} className={cn('bg-gradient-to-r', tone.bar)}>
+    <div role="region" aria-label={t('label')} className={cn(tone.bar)}>
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2 text-sm">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/25">
+        <span
+          className={cn(
+            'flex size-7 shrink-0 items-center justify-center rounded-full',
+            tone.action,
+          )}
+        >
           <Icon className="size-4" aria-hidden />
         </span>
         <p className="min-w-0 flex-1 truncate">
@@ -79,7 +84,10 @@ export function AnnouncementBar() {
         </p>
         <Link
           to="/#announcements"
-          className="flex shrink-0 items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold hover:bg-white/30"
+          className={cn(
+            'flex shrink-0 items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold',
+            tone.action,
+          )}
         >
           {items.length > 1 ? t('more', { count: items.length - 1 }) : t('viewAll')}
           <ArrowRight className="size-3.5" aria-hidden />
@@ -88,7 +96,7 @@ export function AnnouncementBar() {
           type="button"
           onClick={hide}
           aria-label={t('dismiss')}
-          className="shrink-0 rounded-full p-1 hover:bg-white/25"
+          className={cn('shrink-0 rounded-md p-1', tone.action)}
         >
           <X className="size-4" aria-hidden />
         </button>

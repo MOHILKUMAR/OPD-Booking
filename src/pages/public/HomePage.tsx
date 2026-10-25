@@ -86,14 +86,12 @@ const messages = defineMessages({
   },
 })
 
-// Soft, distinct colours for department chips (text ≥ 4.5:1 on its tint).
+// Department chips cycle through the brand palette (text ≥ 4.5:1 on each tint).
 const DEPARTMENT_TONES = [
-  'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100',
-  'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100',
-  'border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100',
-  'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100',
-  'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100',
-  'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100',
+  'border-brand/25 bg-white text-brand hover:bg-brand/5',
+  'border-steel/40 bg-steel/10 text-brand-deep hover:bg-steel/20',
+  'border-sky bg-sky/25 text-brand-deep hover:bg-sky/40',
+  'border-cream-dark bg-cream text-cream-ink hover:bg-cream-dark',
 ]
 
 export function HomePage() {
@@ -144,34 +142,34 @@ export function HomePage() {
 
   return (
     <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-700 px-5 py-8 text-white shadow-xl shadow-teal-900/20 sm:px-10 sm:py-12">
+      <section className="relative overflow-hidden rounded-lg bg-gradient-to-br from-brand via-brand to-steel px-5 py-8 text-white shadow-lg shadow-brand/20 sm:px-10 sm:py-12">
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-white/10 blur-2xl"
+          className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-sky/20 blur-2xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-28 left-1/3 size-80 rounded-full bg-emerald-300/20 blur-3xl"
+          className="pointer-events-none absolute -bottom-28 left-1/3 size-80 rounded-full bg-cream/10 blur-3xl"
         />
         <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-sm font-medium">
+            <p className="inline-flex items-center gap-2 rounded-md bg-white/15 px-3 py-1 text-sm font-medium">
               <CalendarDays className="size-4" aria-hidden /> {formatDate(today)}
             </p>
             <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-5xl">{hospital.name}</h1>
-            {hospital.tagline && <p className="mt-2 max-w-2xl text-teal-50">{hospital.tagline}</p>}
+            {hospital.tagline && <p className="mt-2 max-w-2xl text-accent">{hospital.tagline}</p>}
             <div className="mt-5 flex flex-wrap gap-2 text-sm">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 font-medium">
+              <span className="inline-flex items-center gap-2 rounded-md bg-white/15 px-3 py-1 font-medium">
                 <span
                   aria-hidden
                   className={cn(
                     'size-2 rounded-full',
-                    running > 0 ? 'animate-pulse bg-emerald-300' : 'bg-white/60',
+                    running > 0 ? 'animate-pulse bg-sky' : 'bg-white/60',
                   )}
                 />
                 {running > 0 ? t('running', { count: running }) : t('noneRunning')}
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 font-medium">
+              <span className="inline-flex items-center gap-2 rounded-md bg-white/15 px-3 py-1 font-medium">
                 <Ticket className="size-4" aria-hidden />{' '}
                 {t('openToday', { count: bookable.length })}
               </span>
@@ -199,14 +197,14 @@ export function HomePage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={t('searchPlaceholder')}
-                  className="h-12 rounded-xl border-0 bg-white pl-10 text-slate-900 shadow-lg placeholder:text-slate-500"
+                  className="h-12 rounded-md border-0 bg-white pl-10 text-slate-900 shadow-md placeholder:text-slate-500"
                 />
               </div>
               <Button
                 type="submit"
                 size="lg"
                 variant="ghost"
-                className="h-12 rounded-xl bg-slate-900/25 px-4 text-white hover:bg-slate-900/40 hover:text-white"
+                className="h-12 rounded-md bg-brand-deep/60 px-4 text-white hover:bg-brand-deep/80 hover:text-white"
                 aria-label={t('search')}
               >
                 <Search />
@@ -217,7 +215,7 @@ export function HomePage() {
                 asChild
                 size="lg"
                 variant="highlight"
-                className="h-12 rounded-xl px-6 text-base"
+                className="h-12 rounded-md px-6 text-base"
               >
                 <Link to="/doctors?available=1">
                   <Ticket /> {t('bookToken')}
@@ -227,7 +225,7 @@ export function HomePage() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-12 rounded-xl border-white/40 bg-white/10 px-6 text-base text-white shadow-none hover:bg-white/20 hover:text-white"
+                className="h-12 rounded-md border-white/50 bg-white/10 px-6 text-base text-white shadow-none hover:bg-white/20 hover:text-white"
               >
                 <Link to="/track">
                   <Radar /> {t('trackToken')}
@@ -237,9 +235,9 @@ export function HomePage() {
           </div>
           <aside
             aria-label={t('glanceTitle')}
-            className="hidden rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm lg:block"
+            className="hidden rounded-lg border border-white/15 bg-brand-deep/60 p-5 backdrop-blur-sm lg:block"
           >
-            <p className="text-sm font-semibold tracking-wide text-teal-50 uppercase">
+            <p className="text-sm font-semibold tracking-wide text-sky uppercase">
               {t('glanceTitle')}
             </p>
             <dl className="mt-4 space-y-3">
@@ -250,12 +248,12 @@ export function HomePage() {
               ].map(({ icon: Icon, label, value }) => (
                 <div
                   key={label}
-                  className="flex items-center gap-3 rounded-xl bg-white/10 px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-md bg-white/10 px-3 py-2.5"
                 >
-                  <span className="flex size-9 items-center justify-center rounded-lg bg-white/20">
+                  <span className="flex size-9 items-center justify-center rounded-md bg-sky/20 text-sky">
                     <Icon className="size-4" aria-hidden />
                   </span>
-                  <dt className="flex-1 text-sm text-teal-50">{label}</dt>
+                  <dt className="flex-1 text-sm text-accent">{label}</dt>
                   <dd className="text-2xl font-bold tabular">{value}</dd>
                 </div>
               ))}
@@ -279,7 +277,7 @@ export function HomePage() {
                 key={d.id}
                 to={`/doctors?department=${d.id}`}
                 className={cn(
-                  'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                  'inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition-colors',
                   DEPARTMENT_TONES[i % DEPARTMENT_TONES.length],
                 )}
               >
@@ -318,7 +316,7 @@ export function HomePage() {
               return (
                 <Card
                   key={`${doctor.id}-${session.shift_id}`}
-                  className="gap-3 overflow-hidden border-t-4 border-t-teal-500 py-4 transition-shadow hover:shadow-md"
+                  className="gap-3 overflow-hidden border-t-4 border-t-steel py-4 transition-shadow hover:shadow-md"
                 >
                   <CardHeader className="flex flex-row items-center gap-3 px-4">
                     <DoctorAvatar
@@ -340,7 +338,7 @@ export function HomePage() {
                   <CardContent className="space-y-3 px-4 text-sm">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2">
-                        <Clock className="mt-0.5 size-4 shrink-0 text-teal-600" aria-hidden />
+                        <Clock className="mt-0.5 size-4 shrink-0 text-steel" aria-hidden />
                         <div>
                           <p className="font-medium">{session.shift_name}</p>
                           <p className="whitespace-nowrap text-muted-foreground">
@@ -351,9 +349,9 @@ export function HomePage() {
                       <SessionStatusBadge status={session.session_status} />
                     </div>
                     <div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden>
+                      <div className="h-1.5 overflow-hidden rounded-sm bg-sky/30" aria-hidden>
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500"
+                          className="h-full rounded-sm bg-gradient-to-r from-steel to-brand"
                           style={{ width: `${leftShare}%` }}
                         />
                       </div>
@@ -378,8 +376,8 @@ export function HomePage() {
 
       <section className="grid gap-4 sm:grid-cols-2" aria-label={t('visitingInfo')}>
         <Card className="gap-0 overflow-hidden py-0">
-          <CardHeader className="flex flex-row items-center gap-3 bg-gradient-to-r from-teal-600 to-cyan-600 px-5 py-4 text-white">
-            <span className="flex size-9 items-center justify-center rounded-full bg-white/20">
+          <CardHeader className="flex flex-row items-center gap-3 bg-brand px-5 py-4 text-white">
+            <span className="flex size-9 items-center justify-center rounded-md bg-white/15">
               <Clock className="size-5" aria-hidden />
             </span>
             <CardTitle className="text-base">{t('operatingHours')}</CardTitle>
@@ -397,7 +395,7 @@ export function HomePage() {
                       {allDay ? (
                         <Siren className="size-4 text-rose-600" aria-hidden />
                       ) : (
-                        <CalendarDays className="size-4 text-teal-600" aria-hidden />
+                        <CalendarDays className="size-4 text-steel" aria-hidden />
                       )}
                       {h.label}
                     </dt>
@@ -410,10 +408,10 @@ export function HomePage() {
                           <span
                             key={part}
                             className={cn(
-                              'rounded-full px-2.5 py-1 text-xs font-semibold tabular',
+                              'rounded-sm px-2.5 py-1 text-xs font-semibold tabular',
                               allDay
                                 ? 'bg-rose-100 text-rose-800'
-                                : 'bg-teal-50 text-teal-800 ring-1 ring-teal-200',
+                                : 'bg-sky/25 text-brand-deep ring-1 ring-sky',
                             )}
                           >
                             {part}
@@ -427,8 +425,8 @@ export function HomePage() {
           </CardContent>
         </Card>
         <Card className="gap-0 overflow-hidden py-0">
-          <CardHeader className="flex flex-row items-center gap-3 bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-4 text-white">
-            <span className="flex size-9 items-center justify-center rounded-full bg-white/20">
+          <CardHeader className="flex flex-row items-center gap-3 border-b border-cream-dark bg-cream px-5 py-4 text-brand">
+            <span className="flex size-9 items-center justify-center rounded-md bg-brand/10">
               <MapPin className="size-5" aria-hidden />
             </span>
             <CardTitle className="text-base">{t('addressContact')}</CardTitle>
@@ -441,7 +439,7 @@ export function HomePage() {
               {hospital.phone && (
                 <a
                   href={`tel:${hospital.phone.replace(/\s/g, '')}`}
-                  className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1.5 font-medium text-indigo-800 ring-1 ring-indigo-200 hover:bg-indigo-100"
+                  className="inline-flex items-center gap-2 rounded-md bg-brand/5 px-3 py-1.5 font-medium text-brand ring-1 ring-brand/20 hover:bg-brand/10"
                 >
                   <Phone className="size-4" aria-hidden /> {hospital.phone}
                 </a>
@@ -449,7 +447,7 @@ export function HomePage() {
               {hospital.emergency_phone && (
                 <a
                   href={`tel:${hospital.emergency_phone.replace(/\s/g, '')}`}
-                  className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1.5 font-semibold text-rose-800 ring-1 ring-rose-200 hover:bg-rose-100"
+                  className="inline-flex items-center gap-2 rounded-md bg-rose-50 px-3 py-1.5 font-semibold text-rose-800 ring-1 ring-rose-200 hover:bg-rose-100"
                 >
                   <Siren className="size-4" aria-hidden />
                   {t('emergency', { phone: hospital.emergency_phone })}
@@ -460,7 +458,7 @@ export function HomePage() {
                   href={hospital.map_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1.5 font-medium text-violet-800 ring-1 ring-violet-200 hover:bg-violet-100"
+                  className="inline-flex items-center gap-2 rounded-md bg-steel/10 px-3 py-1.5 font-medium text-brand-deep ring-1 ring-steel/30 hover:bg-steel/20"
                 >
                   <MapPin className="size-4" aria-hidden /> {t('openInMaps')}
                 </a>
